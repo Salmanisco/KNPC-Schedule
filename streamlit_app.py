@@ -230,10 +230,6 @@ if isinstance(dates, tuple) and len(dates) == 2:
             },
             "initialView": "multiMonthYear",
             "initialDate": start_d.strftime('%Y-%m-%d'),
-            "validRange": {
-                "start": start_d.strftime('%Y-%m-%d'),
-                "end": (end_d + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-            }
         }
         
         calendar(events=events, options=calendar_options)
