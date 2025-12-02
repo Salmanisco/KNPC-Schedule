@@ -130,45 +130,77 @@ st.set_page_config(
 
 st.title("🛢️ KNPC Schedule")
 
-cycle = st.radio("Choose a group: ", [group for group in shift_groups_dict], horizontal=True)
-shift_cycle = shift_groups_dict[cycle]
+# --- Sidebar Controls ---
+with st.sidebar:
+    st.header("⚙️ Settings")
+    
+    # 1. Group Selection
+    st.subheader("Group Selection")
+    col1, col2 = st.columns(2)
+    with col1:
+        company = st.selectbox("Company", ["KNPC", "KOC"])
+    with col2:
+        group = st.selectbox("Group", ["A", "B", "C", "D"])
+    
+    if company == "KNPC":
+        cycle_key = group
+    else:
+        cycle_key = f"KOC {group}"
+    
+    shift_cycle = shift_groups_dict[cycle_key]
+    
+    st.divider()
 
-today = datetime.date.today()
+    # 2. Date Selection
+    st.subheader("Date Selection")
+    today = datetime.date.today()
 
-if 'date_range' not in st.session_state:
-    st.session_state.date_range = (today, today + datetime.timedelta(days=365))
-    st.session_state.quick_select = "Next Year"
-
-def update_dates():
-    selection = st.session_state.quick_select
-    if selection == "Next Week":
-        st.session_state.date_range = (today, today + datetime.timedelta(days=7))
-    elif selection == "Next Month":
-        st.session_state.date_range = (today, today + datetime.timedelta(days=30))
-    elif selection == "Next 3 Months":
-        st.session_state.date_range = (today, today + datetime.timedelta(days=90))
-    elif selection == "Next 6 Months":
-        st.session_state.date_range = (today, today + datetime.timedelta(days=180))
-    elif selection == "Next Year":
+    if 'date_range' not in st.session_state:
         st.session_state.date_range = (today, today + datetime.timedelta(days=365))
+        st.session_state.quick_select = "Next Year"
 
-st.selectbox(
-    "Quick Select Range:",
-    ["Next Year", "Next Week", "Next Month", "Next 3 Months", "Next 6 Months", "Custom"],
-    key="quick_select",
-    on_change=update_dates
-)
+    def update_dates():
+        selection = st.session_state.quick_select
+        if selection == "Next Week":
+            st.session_state.date_range = (today, today + datetime.timedelta(days=7))
+        elif selection == "Next Month":
+            st.session_state.date_range = (today, today + datetime.timedelta(days=30))
+        elif selection == "Next 3 Months":
+            st.session_state.date_range = (today, today + datetime.timedelta(days=90))
+        elif selection == "Next 6 Months":
+            st.session_state.date_range = (today, today + datetime.timedelta(days=180))
+        elif selection == "Next Year":
+            st.session_state.date_range = (today, today + datetime.timedelta(days=365))
 
-if st.session_state.quick_select == "Custom":
-    dates = st.date_input(
-      "Select your dates: ",
-      value=st.session_state.date_range,
-      min_value=datetime.date(2020, 1, 1),
-      max_value=datetime.date(2050, 12, 31),
-      key="date_range"
+    st.selectbox(
+        "Quick Select:",
+        ["Next Year", "Next Week", "Next Month", "Next 3 Months", "Next 6 Months", "Custom"],
+        key="quick_select",
+        on_change=update_dates
     )
-else:
-    dates = st.session_state.date_range
+
+    if st.session_state.quick_select == "Custom":
+        dates = st.date_input(
+          "Custom Range:",
+          value=st.session_state.date_range,
+          min_value=datetime.date(2020, 1, 1),
+          max_value=datetime.date(2050, 12, 31),
+          key="date_range"
+        )
+    else:
+        dates = st.session_state.date_range
+    
+    st.divider()
+    
+    # 3. View Selection
+    st.subheader("View Mode")
+    view = st.radio(
+        "Select View:", 
+        ["Calendar", "Upcoming Holidays", "Long Weekends", "Full Schedule"],
+        index=0
+    )
+
+# --- Main Content ---
 
 if isinstance(dates, tuple) and len(dates) == 2:
     start_d, end_d = dates
@@ -178,63 +210,108 @@ if isinstance(dates, tuple) and len(dates) == 2:
     else:
         schedule = create_schedule(start_date=start_d, end_date=end_d, cycle = shift_cycle)
         
-        st.subheader("📅 Schedule")
+        # Download Button (in Sidebar)
+        with st.sidebar:
+            st.divider()
+            csv = schedule.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download CSV",
+                data=csv,
+                file_name=f'{company}_{group}_schedule.csv',
+                mime='text/csv',
+                use_container_width=True
+            )
 
-        # Prepare events for the calendar
-        events = []
-        for index, row in schedule.iterrows():
-            date_str = row['Date'].strftime('%Y-%m-%d')
-            shift = row['Shift']
-            holiday = row['Holiday']
+        # Render Views
+        if view == "Calendar":
+            st.subheader("📅 Calendar")
             
-            # Holiday Event
-            if holiday:
-                events.append({
-                    "title": f"🇰🇼 {holiday}",
+            # Prepare events for the calendar
+            events = []
+            for index, row in schedule.iterrows():
+                date_str = row['Date'].strftime('%Y-%m-%d')
+                shift = row['Shift']
+                holiday = row['Holiday']
+                
+                # Holiday Event
+                if holiday:
+                    events.append({
+                        "title": f"🇰🇼 {holiday}",
+                        "start": date_str,
+                        "allDay": True,
+                        "backgroundColor": "#FFD700", # Gold
+                        "borderColor": "#DAA520",
+                        "textColor": "#000000"
+                    })
+
+                # Shift Event
+                color = "#808080" # Default gray
+                if shift == 'Off':
+                    color = "#28a745" # Green
+                elif shift == 'Night':
+                    color = "#007bff" # Blue
+                elif shift == 'Morning':
+                    color = "#ffc107" # Yellow/Orange
+                    text_color = "#000000"
+                elif shift == 'Afternoon':
+                    color = "#dc3545" # Red
+
+                event = {
+                    "title": shift,
                     "start": date_str,
                     "allDay": True,
-                    "backgroundColor": "#FFD700", # Gold
-                    "borderColor": "#DAA520",
-                    "textColor": "#000000"
-                })
+                    "backgroundColor": color,
+                    "borderColor": color
+                }
+                if shift == 'Morning':
+                     event["textColor"] = "#000000"
+                
+                events.append(event)
 
-            # Shift Event
-            color = "#808080" # Default gray
-            if shift == 'Off':
-                color = "#28a745" # Green
-            elif shift == 'Night':
-                color = "#007bff" # Blue
-            elif shift == 'Morning':
-                color = "#ffc107" # Yellow/Orange
-                text_color = "#000000"
-            elif shift == 'Afternoon':
-                color = "#dc3545" # Red
-
-            event = {
-                "title": shift,
-                "start": date_str,
-                "allDay": True,
-                "backgroundColor": color,
-                "borderColor": color
+            calendar_options = {
+                "headerToolbar": {
+                    "left": "prev,next today",
+                    "center": "title",
+                    "right": "multiMonthYear,dayGridMonth,listMonth"
+                },
+                "initialView": "multiMonthYear",
+                "initialDate": start_d.strftime('%Y-%m-%d'),
             }
-            if shift == 'Morning':
-                 event["textColor"] = "#000000"
             
-            events.append(event)
+            calendar(events=events, options=calendar_options)
 
-        calendar_options = {
-            "headerToolbar": {
-                "left": "prev,next today",
-                "center": "title",
-                "right": "multiMonthYear,dayGridMonth,listMonth"
-            },
-            "initialView": "multiMonthYear",
-            "initialDate": start_d.strftime('%Y-%m-%d'),
-        }
-        
-        calendar(events=events, options=calendar_options)
+        elif view == "Upcoming Holidays":
+            st.subheader("🇰🇼 Upcoming Holidays")
+            holidays_df = schedule[schedule['Holiday'] != '']
+            if not holidays_df.empty:
+                 st.dataframe(
+                    holidays_df[['Date', 'Day of Week', 'Holiday']].style.format({'Date': '{:%d %B %Y}'}),
+                    use_container_width=True,
+                    column_config={
+                        "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
+                    },
+                    hide_index=True
+                )
+            else:
+                st.info("No holidays found in the selected range.")
 
-        with st.expander("Show Table View"):
+        elif view == "Long Weekends":
+            st.subheader("🎉 Long Weekends (Fri & Sat Off)")
+            weekend_schedule = weekends(schedule)
+            if not weekend_schedule.empty:
+                 st.dataframe(
+                    weekend_schedule.style.apply(highlight_rows, axis=1).format({'Date': '{:%d %B %Y}'}),
+                    use_container_width=True,
+                    column_config={
+                        "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
+                    },
+                    hide_index=True
+                )
+            else:
+                st.info("No long weekends found in this range.")
+
+        elif view == "Full Schedule":
+            st.subheader("📋 Full Schedule")
             # Apply styling to the entire row
             styled_schedule = schedule.style.apply(highlight_rows, axis=1).format({'Date': '{:%d %B %Y}'})
             
@@ -246,45 +323,6 @@ if isinstance(dates, tuple) and len(dates) == 2:
                 },
                 hide_index=True
             )
-
-        # Download button
-        csv = schedule.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Download Schedule as CSV",
-            data=csv,
-            file_name=f'knpc_schedule_{cycle}_{start_d}_{end_d}.csv',
-            mime='text/csv',
-        )
-
-        # Holidays Section
-        holidays_df = schedule[schedule['Holiday'] != '']
-        if not holidays_df.empty:
-             st.subheader("🇰🇼 Upcoming Holidays")
-             st.dataframe(
-                holidays_df[['Date', 'Day of Week', 'Holiday']].style.format({'Date': '{:%d %B %Y}'}),
-                use_container_width=True,
-                column_config={
-                    "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
-                },
-                hide_index=True
-            )
-
-        weekend_schedule = weekends(schedule)
-
-        st.divider()
-
-        st.subheader("🎉 Long Weekends (Fri & Sat Off)")
-        if not weekend_schedule.empty:
-             st.dataframe(
-                weekend_schedule.style.apply(highlight_rows, axis=1).format({'Date': '{:%d %B %Y}'}),
-                use_container_width=True,
-                column_config={
-                    "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
-                },
-                hide_index=True
-            )
-        else:
-            st.info("No long weekends found in this range.")
 
 elif isinstance(dates, tuple) and len(dates) == 1:
     st.warning("Please select an end date.")
