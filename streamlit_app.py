@@ -136,7 +136,8 @@ shift_cycle = shift_groups_dict[cycle]
 today = datetime.date.today()
 
 if 'date_range' not in st.session_state:
-    st.session_state.date_range = (today, today + datetime.timedelta(days=7))
+    st.session_state.date_range = (today, today + datetime.timedelta(days=365))
+    st.session_state.quick_select = "Next Year"
 
 def update_dates():
     selection = st.session_state.quick_select
@@ -153,18 +154,21 @@ def update_dates():
 
 st.selectbox(
     "Quick Select Range:",
-    ["Custom", "Next Week", "Next Month", "Next 3 Months", "Next 6 Months", "Next Year"],
+    ["Next Year", "Next Week", "Next Month", "Next 3 Months", "Next 6 Months", "Custom"],
     key="quick_select",
     on_change=update_dates
 )
 
-dates = st.date_input(
-  "Select your dates: ",
-  value=st.session_state.date_range,
-  min_value=datetime.date(2020, 1, 1),
-  max_value=datetime.date(2050, 12, 31),
-  key="date_range"
-)
+if st.session_state.quick_select == "Custom":
+    dates = st.date_input(
+      "Select your dates: ",
+      value=st.session_state.date_range,
+      min_value=datetime.date(2020, 1, 1),
+      max_value=datetime.date(2050, 12, 31),
+      key="date_range"
+    )
+else:
+    dates = st.session_state.date_range
 
 if isinstance(dates, tuple) and len(dates) == 2:
     start_d, end_d = dates
@@ -222,8 +226,9 @@ if isinstance(dates, tuple) and len(dates) == 2:
             "headerToolbar": {
                 "left": "prev,next today",
                 "center": "title",
-                "right": "dayGridMonth,listMonth"
+                "right": "multiMonthYear,dayGridMonth,listMonth"
             },
+            "initialView": "multiMonthYear",
             "initialDate": start_d.strftime('%Y-%m-%d'),
             "validRange": {
                 "start": start_d.strftime('%Y-%m-%d'),
