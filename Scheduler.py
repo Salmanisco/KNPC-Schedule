@@ -151,7 +151,7 @@ if isinstance(dates, tuple) and len(dates) == 2:
         st.subheader("📅 Schedule")
         
         # Apply styling to the entire row
-        styled_schedule = schedule.style.apply(highlight_rows, axis=1)
+        styled_schedule = schedule.style.apply(highlight_rows, axis=1).format({'Date': '{:%d %B %Y}'})
         
         st.dataframe(
             styled_schedule, 
@@ -176,7 +176,7 @@ if isinstance(dates, tuple) and len(dates) == 2:
         if not holidays_df.empty:
              st.subheader("🇰🇼 Upcoming Holidays")
              st.dataframe(
-                holidays_df[['Date', 'Day of Week', 'Holiday']],
+                holidays_df[['Date', 'Day of Week', 'Holiday']].style.format({'Date': '{:%d %B %Y}'}),
                 use_container_width=True,
                 column_config={
                     "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
@@ -191,7 +191,7 @@ if isinstance(dates, tuple) and len(dates) == 2:
         st.subheader("🎉 Long Weekends (Fri & Sat Off)")
         if not weekend_schedule.empty:
              st.dataframe(
-                weekend_schedule.style.apply(highlight_rows, axis=1),
+                weekend_schedule.style.apply(highlight_rows, axis=1).format({'Date': '{:%d %B %Y}'}),
                 use_container_width=True,
                 column_config={
                     "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
