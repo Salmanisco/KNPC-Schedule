@@ -42,7 +42,7 @@ def create_schedule(start_date, end_date, cycle: list[str]):
   including Kuwaiti holidays.
   """
   schedule = []
-  kw_holidays = holidays.KW()
+  kw_holidays = holidays.KW(language='en_US')
   
   current_date = start_date
   while current_date <= end_date:
@@ -157,7 +157,7 @@ if isinstance(dates, tuple) and len(dates) == 2:
             styled_schedule, 
             use_container_width=True,
             column_config={
-                "Date": st.column_config.DateColumn("Date", format="DD/MM/YYYY"),
+                "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
             },
             hide_index=True
         )
@@ -179,7 +179,7 @@ if isinstance(dates, tuple) and len(dates) == 2:
                 holidays_df[['Date', 'Day of Week', 'Holiday']],
                 use_container_width=True,
                 column_config={
-                    "Date": st.column_config.DateColumn("Date", format="DD/MM/YYYY"),
+                    "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
                 },
                 hide_index=True
             )
@@ -194,7 +194,7 @@ if isinstance(dates, tuple) and len(dates) == 2:
                 weekend_schedule.style.apply(highlight_rows, axis=1),
                 use_container_width=True,
                 column_config={
-                    "Date": st.column_config.DateColumn("Date", format="DD/MM/YYYY"),
+                    "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
                 },
                 hide_index=True
             )
