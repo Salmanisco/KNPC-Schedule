@@ -5,81 +5,7 @@ import numpy as np
 import holidays
 from streamlit_calendar import calendar
 
-# ... (rest of the file remains the same until the main logic)
 
-# ... (inside the main block, replacing the table display)
-
-        st.subheader("📅 Schedule")
-
-        # Prepare events for the calendar
-        events = []
-        for index, row in schedule.iterrows():
-            date_str = row['Date'].strftime('%Y-%m-%d')
-            shift = row['Shift']
-            holiday = row['Holiday']
-            
-            # Holiday Event
-            if holiday:
-                events.append({
-                    "title": f"🇰🇼 {holiday}",
-                    "start": date_str,
-                    "allDay": True,
-                    "backgroundColor": "#FFD700", # Gold
-                    "borderColor": "#DAA520",
-                    "textColor": "#000000"
-                })
-
-            # Shift Event
-            color = "#808080" # Default gray
-            if shift == 'Off':
-                color = "#28a745" # Green
-            elif shift == 'Night':
-                color = "#007bff" # Blue
-            elif shift == 'Morning':
-                color = "#ffc107" # Yellow/Orange
-                text_color = "#000000"
-            elif shift == 'Afternoon':
-                color = "#dc3545" # Red
-
-            event = {
-                "title": shift,
-                "start": date_str,
-                "allDay": True,
-                "backgroundColor": color,
-                "borderColor": color
-            }
-            if shift == 'Morning':
-                 event["textColor"] = "#000000"
-            
-            events.append(event)
-
-        calendar_options = {
-            "headerToolbar": {
-                "left": "prev,next today",
-                "center": "title",
-                "right": "dayGridMonth,listMonth"
-            },
-            "initialDate": start_d.strftime('%Y-%m-%d'),
-            "validRange": {
-                "start": start_d.strftime('%Y-%m-%d'),
-                "end": (end_d + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-            }
-        }
-        
-        calendar(events=events, options=calendar_options)
-
-        with st.expander("Show Table View"):
-            # Apply styling to the entire row
-            styled_schedule = schedule.style.apply(highlight_rows, axis=1).format({'Date': '{:%d %B %Y}'})
-            
-            st.dataframe(
-                styled_schedule, 
-                use_container_width=True,
-                column_config={
-                    "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
-                },
-                hide_index=True
-            )
 
 # Shift cycles starting from Oct 6 2024
 A = ['Night', 'Night', 'Off', 'Off', 'Morning', 'Morning', 'Afternoon', 'Afternoon']
@@ -249,18 +175,76 @@ if isinstance(dates, tuple) and len(dates) == 2:
         schedule = create_schedule(start_date=start_d, end_date=end_d, cycle = shift_cycle)
         
         st.subheader("📅 Schedule")
-        
-        # Apply styling to the entire row
-        styled_schedule = schedule.style.apply(highlight_rows, axis=1).format({'Date': '{:%d %B %Y}'})
-        
-        st.dataframe(
-            styled_schedule, 
-            use_container_width=True,
-            column_config={
-                "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
+
+        # Prepare events for the calendar
+        events = []
+        for index, row in schedule.iterrows():
+            date_str = row['Date'].strftime('%Y-%m-%d')
+            shift = row['Shift']
+            holiday = row['Holiday']
+            
+            # Holiday Event
+            if holiday:
+                events.append({
+                    "title": f"🇰🇼 {holiday}",
+                    "start": date_str,
+                    "allDay": True,
+                    "backgroundColor": "#FFD700", # Gold
+                    "borderColor": "#DAA520",
+                    "textColor": "#000000"
+                })
+
+            # Shift Event
+            color = "#808080" # Default gray
+            if shift == 'Off':
+                color = "#28a745" # Green
+            elif shift == 'Night':
+                color = "#007bff" # Blue
+            elif shift == 'Morning':
+                color = "#ffc107" # Yellow/Orange
+                text_color = "#000000"
+            elif shift == 'Afternoon':
+                color = "#dc3545" # Red
+
+            event = {
+                "title": shift,
+                "start": date_str,
+                "allDay": True,
+                "backgroundColor": color,
+                "borderColor": color
+            }
+            if shift == 'Morning':
+                 event["textColor"] = "#000000"
+            
+            events.append(event)
+
+        calendar_options = {
+            "headerToolbar": {
+                "left": "prev,next today",
+                "center": "title",
+                "right": "dayGridMonth,listMonth"
             },
-            hide_index=True
-        )
+            "initialDate": start_d.strftime('%Y-%m-%d'),
+            "validRange": {
+                "start": start_d.strftime('%Y-%m-%d'),
+                "end": (end_d + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+            }
+        }
+        
+        calendar(events=events, options=calendar_options)
+
+        with st.expander("Show Table View"):
+            # Apply styling to the entire row
+            styled_schedule = schedule.style.apply(highlight_rows, axis=1).format({'Date': '{:%d %B %Y}'})
+            
+            st.dataframe(
+                styled_schedule, 
+                use_container_width=True,
+                column_config={
+                    "Date": st.column_config.DateColumn("Date", format="DD MMMM YYYY"),
+                },
+                hide_index=True
+            )
 
         # Download button
         csv = schedule.to_csv(index=False).encode('utf-8')
