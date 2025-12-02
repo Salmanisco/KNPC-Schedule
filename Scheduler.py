@@ -2,6 +2,7 @@ import datetime
 import pandas as pd
 import streamlit as st
 import numpy as np
+import holidays
 
 # Shift cycles starting from Oct 6 2024
 A = ['Night', 'Night', 'Off', 'Off', 'Morning', 'Morning', 'Afternoon', 'Afternoon']
@@ -37,20 +38,28 @@ def get_shift_for_date(date, cycle: list[str]):
 
 def create_schedule(start_date, end_date, cycle: list[str]):
   """
-  Creates a schedule with the specified start and end date for a specific shift cycle
+  Creates a schedule with the specified start and end date for a specific shift cycle,
+  including Kuwaiti holidays.
   """
   schedule = []
+  kw_holidays = holidays.KW()
+  
   current_date = start_date
   while current_date <= end_date:
     shift = get_shift_for_date(current_date, cycle)
-    schedule.append([current_date, shift])
+    holiday_name = kw_holidays.get(current_date) # Returns None if not a holiday
+    schedule.append([current_date, shift, holiday_name])
     current_date += datetime.timedelta(days=1)
 
-  df = pd.DataFrame(schedule, columns=['Date', 'Shift'])
+  df = pd.DataFrame(schedule, columns=['Date', 'Shift', 'Holiday'])
   # Ensure Date is datetime64[ns] for .dt accessor
   df['Date'] = pd.to_datetime(df['Date'])
   df['Day of Week'] = df['Date'].dt.day_name()
-  return df[['Date', 'Day of Week', 'Shift']]
+  
+  # Fill NaN holidays with empty string for cleaner display
+  df['Holiday'] = df['Holiday'].fillna('')
+  
+  return df[['Date', 'Day of Week', 'Shift', 'Holiday']]
 
 
 def weekends(schedule_df):
@@ -87,17 +96,28 @@ def weekends(schedule_df):
       
   return schedule_df.loc[all_indices].reset_index(drop=True)
 
-def highlight_shifts(val):
-    color = ''
+def highlight_rows(row):
+    """
+    Highlights the entire row based on Shift or Holiday status.
+    """
+    styles = [''] * len(row)
+    
+    # Check for holiday first (priority)
+    if row['Holiday']:
+        # Gold/Orange for holidays
+        return ['background-color: #fff3cd; color: #856404'] * len(row)
+        
+    val = row['Shift']
     if val == 'Off':
-        color = 'background-color: #d4edda; color: #155724' # Greenish
+        return ['background-color: #d4edda; color: #155724'] * len(row) # Greenish
     elif val == 'Night':
-        color = 'background-color: #cce5ff; color: #004085' # Blueish
+        return ['background-color: #cce5ff; color: #004085'] * len(row) # Blueish
     elif val == 'Morning':
-        color = 'background-color: #fff3cd; color: #856404' # Yellowish
+        return ['background-color: #ffffff; color: #000000'] * len(row) # White/Default
     elif val == 'Afternoon':
-        color = 'background-color: #f8d7da; color: #721c24' # Reddish
-    return color
+        return ['background-color: #f8d7da; color: #721c24'] * len(row) # Reddish
+        
+    return styles
 
 st.set_page_config(
   page_title="KNPC Schedule", 
@@ -130,8 +150,8 @@ if isinstance(dates, tuple) and len(dates) == 2:
         
         st.subheader("📅 Schedule")
         
-        # Apply styling
-        styled_schedule = schedule.style.map(highlight_shifts, subset=['Shift'])
+        # Apply styling to the entire row
+        styled_schedule = schedule.style.apply(highlight_rows, axis=1)
         
         st.dataframe(
             styled_schedule, 
@@ -151,6 +171,19 @@ if isinstance(dates, tuple) and len(dates) == 2:
             mime='text/csv',
         )
 
+        # Holidays Section
+        holidays_df = schedule[schedule['Holiday'] != '']
+        if not holidays_df.empty:
+             st.subheader("🇰🇼 Upcoming Holidays")
+             st.dataframe(
+                holidays_df[['Date', 'Day of Week', 'Holiday']],
+                use_container_width=True,
+                column_config={
+                    "Date": st.column_config.DateColumn("Date", format="DD/MM/YYYY"),
+                },
+                hide_index=True
+            )
+
         weekend_schedule = weekends(schedule)
 
         st.divider()
@@ -158,7 +191,7 @@ if isinstance(dates, tuple) and len(dates) == 2:
         st.subheader("🎉 Long Weekends (Fri & Sat Off)")
         if not weekend_schedule.empty:
              st.dataframe(
-                weekend_schedule.style.map(highlight_shifts, subset=['Shift']),
+                weekend_schedule.style.apply(highlight_rows, axis=1),
                 use_container_width=True,
                 column_config={
                     "Date": st.column_config.DateColumn("Date", format="DD/MM/YYYY"),
