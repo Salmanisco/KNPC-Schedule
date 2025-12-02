@@ -110,26 +110,6 @@ def highlight_rows(row):
         # Gold/Orange for holidays
         return ['background-color: #fff3cd; color: #856404'] * len(row)
         
-    val = row['Shift']
-    if val == 'Off':
-        return ['background-color: #d4edda; color: #155724'] * len(row) # Greenish
-    elif val == 'Night':
-        return ['background-color: #cce5ff; color: #004085'] * len(row) # Blueish
-    elif val == 'Morning':
-        return ['background-color: #ffffff; color: #000000'] * len(row) # White/Default
-    elif val == 'Afternoon':
-        return ['background-color: #f8d7da; color: #721c24'] * len(row) # Reddish
-        
-    return styles
-
-st.set_page_config(
-  page_title="KNPC Schedule", 
-  page_icon="logo.png",
-  layout="centered"
-)
-
-st.title("🛢️ KNPC Schedule")
-
 # --- Sidebar Controls ---
 with st.sidebar:
     st.image("logo.png", use_container_width=True)
