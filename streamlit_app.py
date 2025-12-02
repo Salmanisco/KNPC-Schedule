@@ -131,13 +131,36 @@ cycle = st.radio("Choose a group: ", [group for group in shift_groups_dict], hor
 shift_cycle = shift_groups_dict[cycle]
 
 today = datetime.date.today()
-next_week = today + datetime.timedelta(days = 7)
+
+if 'date_range' not in st.session_state:
+    st.session_state.date_range = (today, today + datetime.timedelta(days=7))
+
+def update_dates():
+    selection = st.session_state.quick_select
+    if selection == "Next Week":
+        st.session_state.date_range = (today, today + datetime.timedelta(days=7))
+    elif selection == "Next Month":
+        st.session_state.date_range = (today, today + datetime.timedelta(days=30))
+    elif selection == "Next 3 Months":
+        st.session_state.date_range = (today, today + datetime.timedelta(days=90))
+    elif selection == "Next 6 Months":
+        st.session_state.date_range = (today, today + datetime.timedelta(days=180))
+    elif selection == "Next Year":
+        st.session_state.date_range = (today, today + datetime.timedelta(days=365))
+
+st.selectbox(
+    "Quick Select Range:",
+    ["Custom", "Next Week", "Next Month", "Next 3 Months", "Next 6 Months", "Next Year"],
+    key="quick_select",
+    on_change=update_dates
+)
 
 dates = st.date_input(
   "Select your dates: ",
-  value= (today, next_week),
+  value=st.session_state.date_range,
   min_value=datetime.date(2020, 1, 1),
-  max_value=datetime.date(2050, 12, 31)
+  max_value=datetime.date(2050, 12, 31),
+  key="date_range"
 )
 
 if isinstance(dates, tuple) and len(dates) == 2:
