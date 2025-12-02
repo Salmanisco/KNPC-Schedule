@@ -124,7 +124,7 @@ def highlight_rows(row):
 
 st.set_page_config(
   page_title="KNPC Schedule", 
-  page_icon="app logo.png",
+  page_icon="logo.png",
   layout="centered"
 )
 
@@ -132,7 +132,7 @@ st.title("🛢️ KNPC Schedule")
 
 # --- Sidebar Controls ---
 with st.sidebar:
-    st.image("app logo.png", use_container_width=True)
+    st.image("logo.png", use_container_width=True)
     st.header("⚙️ Settings")
     
     # 1. Group Selection
