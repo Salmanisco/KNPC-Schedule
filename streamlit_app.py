@@ -137,7 +137,7 @@ dates = st.date_input(
   "Select your dates: ",
   value= (today, next_week),
   min_value=datetime.date(2020, 1, 1),
-  max_value=datetime.date(2030, 12, 31)
+  max_value=datetime.date(2050, 12, 31)
 )
 
 if isinstance(dates, tuple) and len(dates) == 2:
