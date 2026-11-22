@@ -1,0 +1,27 @@
+{% macro shift_badge(shift, compact=false, extra_cls="") -%}
+{%- set meta = SHIFT_META[shift] -%}
+<span class="inline-flex items-center gap-1.5 rounded-full font-semibold {{ meta.badge_class }} {{ 'px-2 py-0.5 text-[11px]' if compact else 'px-2.5 py-0.5 text-xs' }} {{ extra_cls }}">
+  <span class="w-1.5 h-1.5 rounded-full {{ meta.dot_class }}" aria-hidden="true"></span>
+  {{ meta.short if compact else shift }}
+</span>
+{%- endmacro %}
+
+{% macro legend_bar() -%}
+<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-base-content/75">
+  {% for shift in ("Morning", "Afternoon", "Night", "Off") %}
+    {% set meta = SHIFT_META[shift] %}
+    <span class="inline-flex items-center gap-1.5">
+      <span class="w-2.5 h-2.5 rounded-sm {{ meta.cell_class }} border" aria-hidden="true"></span>
+      <span>{{ shift }}</span>
+    </span>
+  {% endfor %}
+  <span class="inline-flex items-center gap-1.5">
+    <span class="w-2.5 h-2.5 rounded-full bg-amber-400 ring-1 ring-amber-600/40" aria-hidden="true"></span>
+    <span>Kuwait Holiday</span>
+  </span>
+  <span class="inline-flex items-center gap-1.5">
+    <span class="w-2.5 h-2.5 rounded-sm border-2 border-emerald-500/80" aria-hidden="true"></span>
+    <span>Long Weekend (Fri+Sat Off)</span>
+  </span>
+</div>
+{%- endmacro %}

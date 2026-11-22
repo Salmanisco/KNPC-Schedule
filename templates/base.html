@@ -1,0 +1,159 @@
+{% import "macros/icons.html" as icons %}
+<!DOCTYPE html>
+<html lang="en" data-theme="winter">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>{% block title %}KNPC Schedule{% endblock %}</title>
+  <meta name="description" content="Fast, zero-login KNPC &amp; KOC shift schedule planner with Kuwaiti official holidays, long weekend finder, and CSV/ICS export.">
+  <meta name="theme-color" content="#0f4c81">
+  <link rel="icon" type="image/png" href="/static/img/favicon.png">
+  <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.webmanifest">
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("knpc-theme");
+        var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = saved === "night" || saved === "winter" ? saved : (prefersDark ? "night" : "winter");
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script src="/static/js/htmx.min.js" defer></script>
+</head>
+<body class="min-h-screen flex flex-col bg-base-200/70 text-base-content antialiased">
+  <div id="htmx-loader" class="htmx-loader-bar fixed top-0 left-0 right-0 h-0.5 bg-primary z-50 pointer-events-none"></div>
+
+  <header class="sticky top-0 z-30 bg-base-100/90 backdrop-blur-md border-b border-base-300">
+    <div class="max-w-6xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2">
+      <a href="/" class="flex items-center gap-2.5 min-w-0 group">
+        <img src="/static/img/logo.png" alt="KNPC Schedule logo" width="34" height="34"
+             class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-contain shrink-0 ring-1 ring-base-300 bg-base-100">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-sm sm:text-base tracking-tight truncate group-hover:text-primary transition-colors">
+              KNPC Schedule
+            </span>
+            <span class="badge badge-soft badge-primary badge-xs hidden sm:inline-flex">Kuwait</span>
+          </div>
+          <p class="text-[11px] text-base-content/60 truncate hidden xs:block">
+            Shift rotations, long weekends &amp; Kuwaiti holidays
+          </p>
+        </div>
+      </a>
+
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0 no-print">
+        <button type="button"
+                onclick="window.knpcShare(this)"
+                class="btn btn-ghost btn-sm gap-1.5 px-2.5"
+                title="Share or copy link to this schedule">
+          {{ icons.share("w-4 h-4") }}
+          <span class="hidden sm:inline">Share</span>
+        </button>
+
+        <button type="button"
+                id="theme-toggle-btn"
+                onclick="window.knpcToggleTheme()"
+                class="btn btn-ghost btn-sm btn-square"
+                aria-label="Toggle light or dark theme"
+                title="Toggle theme">
+          <span id="theme-icon-sun" class="hidden">{{ icons.sun("w-4 h-4") }}</span>
+          <span id="theme-icon-moon" class="hidden">{{ icons.moon("w-4 h-4") }}</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="border-t border-base-300 bg-base-100/80 py-3 mt-auto no-print">
+    <div class="max-w-6xl mx-auto px-3 sm:px-6 flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/60">
+      <span>KNPC &amp; KOC Shift Scheduler &middot; Asia/Kuwait (UTC+3)</span>
+      <span>No login &middot; Zero tracking &middot; Powered by FastAPI &amp; HTMX</span>
+    </div>
+  </footer>
+
+  <dialog id="day-modal" closedby="any" class="modal modal-bottom sm:modal-middle">
+    <div id="day-modal-body" class="modal-box max-w-lg p-5 sm:p-6"></div>
+    <form method="dialog" class="modal-backdrop">
+      <button type="submit">close</button>
+    </form>
+  </dialog>
+
+  <script>
+    (function () {
+      function syncThemeIcon() {
+        var current = document.documentElement.getAttribute("data-theme") || "winter";
+        var sun = document.getElementById("theme-icon-sun");
+        var moon = document.getElementById("theme-icon-moon");
+        if (!sun || !moon) return;
+        if (current === "night") {
+          sun.classList.remove("hidden");
+          moon.classList.add("hidden");
+        } else {
+          sun.classList.add("hidden");
+          moon.classList.remove("hidden");
+        }
+      }
+
+      window.knpcToggleTheme = function () {
+        var current = document.documentElement.getAttribute("data-theme") || "winter";
+        var next = current === "night" ? "winter" : "night";
+        document.documentElement.setAttribute("data-theme", next);
+        try { localStorage.setItem("knpc-theme", next); } catch (e) {}
+        syncThemeIcon();
+      };
+
+      window.knpcShare = async function (btnEl) {
+        var url = window.location.href;
+        var title = document.title;
+        var isCoarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+        if (navigator.share && isCoarse) {
+          try {
+            await navigator.share({ title: title, url: url });
+            return;
+          } catch (err) {
+            if (err && err.name === "AbortError") return;
+          }
+        }
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+          } else {
+            var ta = document.createElement("textarea");
+            ta.value = url;
+            ta.style.position = "fixed";
+            ta.style.opacity = "0";
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand("copy");
+            ta.remove();
+          }
+          if (btnEl) {
+            if (!btnEl.dataset.origHtml) btnEl.dataset.origHtml = btnEl.innerHTML;
+            btnEl.innerHTML = '<span class="text-success font-semibold">Copied!</span>';
+            clearTimeout(btnEl._copyTimer);
+            btnEl._copyTimer = setTimeout(function () {
+              btnEl.innerHTML = btnEl.dataset.origHtml;
+            }, 1600);
+          }
+        } catch (err) {
+          window.prompt("Copy schedule link:", url);
+        }
+      };
+
+      document.addEventListener("DOMContentLoaded", syncThemeIcon);
+      document.addEventListener("htmx:afterSwap", function (evt) {
+        if (evt.detail && evt.detail.target && evt.detail.target.id === "day-modal-body") {
+          var modal = document.getElementById("day-modal");
+          if (modal && !modal.open) modal.showModal();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

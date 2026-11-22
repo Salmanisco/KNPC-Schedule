@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+@source "../templates";
+@source "../app";
+
+@plugin "../.tools/daisyui.mjs" {
+  themes: winter --default, night --prefersdark;
+}
+
+/* Smooth page rhythm & typography */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 4.5rem;
+}
+
+h1, h2, h3, .text-balance {
+  text-wrap: balance;
+}
+
+/* HTMX top progress bar */
+.htmx-loader-bar {
+  opacity: 0;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: opacity 150ms ease, transform 240ms ease;
+}
+
+.htmx-request .htmx-loader-bar,
+.htmx-request.htmx-loader-bar {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+/* Shift semantic colors — Light theme (winter) */
+.shift-morning {
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+.shift-afternoon {
+  background-color: #ffe4e6;
+  color: #9f1239;
+  border-color: #fda4af;
+}
+
+.shift-night {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border-color: #93c5fd;
+}
+
+.shift-off {
+  background-color: #d1fae5;
+  color: #065f46;
+  border-color: #6ee7b7;
+}
+
+.shift-badge-morning {
+  background-color: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b66;
+}
+
+.shift-badge-afternoon {
+  background-color: #ffe4e6;
+  color: #9f1239;
+  border: 1px solid #f43f5e55;
+}
+
+.shift-badge-night {
+  background-color: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #3b82f655;
+}
+
+.shift-badge-off {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b98155;
+}
+
+.shift-dot-morning { background-color: #f59e0b; }
+.shift-dot-afternoon { background-color: #f43f5e; }
+.shift-dot-night { background-color: #3b82f6; }
+.shift-dot-off { background-color: #10b981; }
+
+.shift-row-morning { background-color: #fffbeb; }
+.shift-row-afternoon { background-color: #fff1f2; }
+.shift-row-night { background-color: #eff6ff; }
+.shift-row-off { background-color: #ecfdf5; }
+.shift-row-holiday {
+  background-color: #fef9c3;
+  box-shadow: inset 3px 0 0 #eab308;
+}
+
+/* Shift semantic colors — Dark theme (night) */
+[data-theme="night"] .shift-morning {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+[data-theme="night"] .shift-afternoon {
+  background-color: rgba(244, 63, 94, 0.2);
+  color: #fecdd3;
+  border-color: rgba(244, 63, 94, 0.45);
+}
+
+[data-theme="night"] .shift-night {
+  background-color: rgba(59, 130, 246, 0.22);
+  color: #bfdbfe;
+  border-color: rgba(59, 130, 246, 0.48);
+}
+
+[data-theme="night"] .shift-off {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #a7f3d0;
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+[data-theme="night"] .shift-badge-morning {
+  background-color: rgba(245, 158, 11, 0.22);
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+[data-theme="night"] .shift-badge-afternoon {
+  background-color: rgba(244, 63, 94, 0.22);
+  color: #fecdd3;
+  border-color: rgba(244, 63, 94, 0.4);
+}
+
+[data-theme="night"] .shift-badge-night {
+  background-color: rgba(59, 130, 246, 0.24);
+  color: #bfdbfe;
+  border-color: rgba(59, 130, 246, 0.45);
+}
+
+[data-theme="night"] .shift-badge-off {
+  background-color: rgba(16, 185, 129, 0.22);
+  color: #a7f3d0;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+[data-theme="night"] .shift-row-morning { background-color: rgba(245, 158, 11, 0.08); }
+[data-theme="night"] .shift-row-afternoon { background-color: rgba(244, 63, 94, 0.09); }
+[data-theme="night"] .shift-row-night { background-color: rgba(59, 130, 246, 0.1); }
+[data-theme="night"] .shift-row-off { background-color: rgba(16, 185, 129, 0.09); }
+[data-theme="night"] .shift-row-holiday {
+  background-color: rgba(234, 179, 8, 0.14);
+  box-shadow: inset 3px 0 0 #facc15;
+}
+
+/* Native <dialog> smooth entry animation */
+dialog.modal {
+  transition-property: opacity, display, overlay;
+  transition-duration: 0.2s;
+  transition-behavior: allow-discrete;
+}
+
+dialog.modal .modal-box {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+
+@starting-style {
+  dialog.modal[open] .modal-box {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.modal,
+  dialog.modal .modal-box {
+    transition-duration: 0.05s;
+  }
+}
+
+@media print {
+  header,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}

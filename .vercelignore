@@ -1,0 +1,11 @@
+tests/
+scripts/
+.tools/
+static_src/
+Dockerfile
+.dockerignore
+render.yaml
+.pytest_cache/
+.ruff_cache/
+.venv/
+README.md

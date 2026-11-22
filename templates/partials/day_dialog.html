@@ -1,0 +1,57 @@
+{% import "macros/icons.html" as icons %}
+{% import "macros/ui.html" as ui %}
+
+{% set e = detail.entry %}
+
+<div class="space-y-4">
+  <div class="flex items-start justify-between gap-3">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider text-base-content/60">
+        {{ e.day_name }}{% if e.is_today %} &middot; Today{% endif %}
+      </p>
+      <h3 class="text-lg sm:text-xl font-bold">{{ e.formatted_date }}</h3>
+    </div>
+    <form method="dialog">
+      <button type="submit" class="btn btn-sm btn-ghost btn-circle" aria-label="Close dialog">
+        {{ icons.x_mark("w-4 h-4") }}
+      </button>
+    </form>
+  </div>
+
+  {% if e.holiday %}
+    <div class="alert alert-warning alert-soft py-2.5 text-sm">
+      {{ icons.flag("w-4 h-4 shrink-0") }}
+      <span><strong>Kuwait Holiday:</strong> {{ e.holiday }}</span>
+    </div>
+  {% endif %}
+
+  <div class="rounded-xl border border-base-300 bg-base-200/45 p-3.5 flex items-center justify-between gap-3">
+    <div>
+      <div class="text-xs text-base-content/65">{{ detail.company }} &middot; Group {{ detail.group }}</div>
+      <div class="text-sm font-semibold mt-0.5">
+        Cycle Day {{ detail.cycle_day }} of {{ detail.cycle_length }}
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if e.is_long_weekend %}
+        <span class="badge badge-success badge-soft badge-sm">Long Weekend</span>
+      {% endif %}
+      {{ ui.shift_badge(e.shift) }}
+    </div>
+  </div>
+
+  <div>
+    <h4 class="text-xs font-semibold uppercase tracking-wider text-base-content/60 mb-2">
+      All {{ detail.company }} Groups on This Day
+    </h4>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+      {% for item in detail.all_groups %}
+        <div class="rounded-lg border p-2.5 text-center {{ 'border-primary ring-1 ring-primary bg-primary/5' if item.is_selected else 'border-base-300 bg-base-100' }}">
+          <div class="text-xs font-bold mb-1">Group {{ item.group }}</div>
+          {{ ui.shift_badge(item.shift, compact=true) }}
+          <div class="text-[10px] text-base-content/55 mt-1">Day {{ item.cycle_day }}/{{ item.cycle_length }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>

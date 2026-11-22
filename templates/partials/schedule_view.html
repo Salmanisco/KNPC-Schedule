@@ -1,0 +1,76 @@
+{% import "macros/ui.html" as ui %}
+
+{% set common_start = start_iso if range_key == 'custom' else None %}
+{% set common_end = end_iso if range_key == 'custom' else None %}
+
+<div class="space-y-3">
+  <!-- Filter Pills -->
+  <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+    <div class="flex flex-wrap items-center gap-1.5 no-print">
+      {% set filters = (("all", "All"), ("Morning", "Morning"), ("Afternoon", "Afternoon"), ("Night", "Night"), ("Off", "Off"), ("holiday", "Holidays Only")) %}
+      {% for f_key, f_label in filters %}
+        {% set f_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='schedule', shift_filter=f_key if f_key != 'all' else None) %}
+        <a href="{{ f_url }}"
+           hx-get="{{ f_url }}"
+           hx-target="#view-panel"
+           hx-swap="innerHTML"
+           hx-push-url="true"
+           hx-indicator="#htmx-loader"
+           class="btn btn-xs rounded-full {{ 'btn-primary' if shift_filter == f_key else 'btn-outline border-base-300 bg-base-100' }}">
+          {{ f_label }}
+        </a>
+      {% endfor %}
+    </div>
+    <span class="text-xs text-base-content/65">
+      Showing <strong>{{ filtered_entries|length }}</strong> of {{ schedule.summary.total_days }} days
+    </span>
+  </div>
+
+  <!-- Schedule Table -->
+  <div class="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
+    <div class="overflow-x-auto max-h-[70vh]">
+      <table class="table table-xs sm:table-sm table-pin-rows">
+        <thead>
+          <tr class="bg-base-200/90 backdrop-blur">
+            <th>Date</th>
+            <th>Day of Week</th>
+            <th>Shift</th>
+            <th>Holiday</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in filtered_entries %}
+            {% set meta = SHIFT_META[e.shift] %}
+            <tr hx-get="/day/{{ e.iso }}?company={{ company }}&group={{ group }}"
+                hx-target="#day-modal-body"
+                hx-swap="innerHTML"
+                class="cursor-pointer hover:brightness-95 transition {{ 'shift-row-holiday' if e.holiday else meta.row_class }} {{ 'ring-2 ring-inset ring-primary' if e.is_today }}">
+              <td class="font-medium whitespace-nowrap">
+                <div class="flex items-center gap-1.5">
+                  <span>{{ e.formatted_date }}</span>
+                  {% if e.is_today %}
+                    <span class="badge badge-primary badge-xs">Today</span>
+                  {% endif %}
+                </div>
+              </td>
+              <td class="whitespace-nowrap {{ 'font-semibold text-primary' if e.is_weekend_day else 'text-base-content/75' }}">
+                {{ e.day_name }}
+                {% if e.is_long_weekend %}
+                  <span class="badge badge-success badge-soft badge-xs ml-1">LW</span>
+                {% endif %}
+              </td>
+              <td>{{ ui.shift_badge(e.shift) }}</td>
+              <td class="text-xs sm:text-sm font-medium">{{ e.holiday }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-8 text-sm text-base-content/60">
+                No days match the selected filter.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

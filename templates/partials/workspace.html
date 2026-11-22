@@ -1,0 +1,220 @@
+{% import "macros/icons.html" as icons %}
+{% import "macros/ui.html" as ui %}
+
+<section class="space-y-4">
+  <!-- Controls Card -->
+  <div class="card bg-base-100 border border-base-300 shadow-sm no-print">
+    <div class="card-body p-3.5 sm:p-5 gap-3.5">
+      <form id="schedule-form"
+            hx-get="/"
+            hx-target="#workspace"
+            hx-swap="innerHTML"
+            hx-push-url="true"
+            hx-indicator="#htmx-loader"
+            class="space-y-3">
+        <div id="form-state-sync">
+          {% include "partials/form_state_inputs.html" %}
+        </div>
+
+        <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-3">
+          <!-- Company & Group Selectors -->
+          <div class="flex flex-wrap items-end gap-3">
+            <div>
+              <span class="block text-[11px] font-semibold uppercase tracking-wider text-base-content/60 mb-1">
+                Company
+              </span>
+              <div class="join">
+                {% for comp in COMPANIES %}
+                  <label class="btn btn-sm join-item cursor-pointer {{ 'btn-primary' if comp == company else 'btn-outline border-base-300' }}">
+                    <input type="radio"
+                           name="company"
+                           value="{{ comp }}"
+                           class="sr-only"
+                           onchange="this.form.requestSubmit()"
+                           {{ 'checked' if comp == company }}>
+                    {{ comp }}
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div>
+              <span class="block text-[11px] font-semibold uppercase tracking-wider text-base-content/60 mb-1">
+                Shift Group
+              </span>
+              <div class="join">
+                {% for grp in GROUPS %}
+                  <label class="btn btn-sm join-item min-w-[2.5rem] cursor-pointer {{ 'btn-primary' if grp == group else 'btn-outline border-base-300' }}">
+                    <input type="radio"
+                           name="group"
+                           value="{{ grp }}"
+                           class="sr-only"
+                           onchange="this.form.requestSubmit()"
+                           {{ 'checked' if grp == group }}>
+                    {{ grp }}
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Date Range + Export Actions -->
+          <div class="flex flex-wrap items-end gap-2 sm:gap-2.5">
+            <label class="form-control">
+              <span class="block text-[11px] font-semibold uppercase tracking-wider text-base-content/60 mb-1">
+                Date Range
+              </span>
+              <select name="range"
+                      aria-label="Quick select date range"
+                      onchange="this.form.requestSubmit()"
+                      class="select select-sm select-bordered bg-base-100 font-medium">
+                {% for key, pair in QUICK_RANGES.items() %}
+                  <option value="{{ key }}" {{ 'selected' if key == range_key }}>{{ pair[0] }}</option>
+                {% endfor %}
+              </select>
+            </label>
+
+            <div class="flex items-center gap-1.5">
+              <a href="{{ build_query_url('/export/csv', company=company, group=group, range=range_key, start=start_iso if range_key == 'custom' else None, end=end_iso if range_key == 'custom' else None) }}"
+                 download
+                 class="btn btn-sm btn-outline border-base-300 gap-1.5"
+                 title="Download schedule as CSV">
+                {{ icons.download("w-3.5 h-3.5") }}
+                <span>CSV</span>
+              </a>
+
+              <a href="{{ build_query_url('/export/ics', company=company, group=group, range=range_key, start=start_iso if range_key == 'custom' else None, end=end_iso if range_key == 'custom' else None) }}"
+                 download
+                 class="btn btn-sm btn-outline border-base-300 gap-1.5"
+                 title="Download Apple / Google / Outlook calendar (.ics)">
+                {{ icons.calendar("w-3.5 h-3.5") }}
+                <span>.ICS</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {% if range_key == "custom" %}
+          <div class="flex flex-wrap items-end gap-2.5 pt-2 border-t border-base-200">
+            <label class="form-control">
+              <span class="text-xs font-medium text-base-content/70 mb-1">From</span>
+              <input type="date"
+                     name="start"
+                     value="{{ start_iso }}"
+                     min="{{ MIN_DATE_ISO }}"
+                     max="{{ MAX_DATE_ISO }}"
+                     class="input input-sm input-bordered"
+                     required>
+            </label>
+            <label class="form-control">
+              <span class="text-xs font-medium text-base-content/70 mb-1">To</span>
+              <input type="date"
+                     name="end"
+                     value="{{ end_iso }}"
+                     min="{{ MIN_DATE_ISO }}"
+                     max="{{ MAX_DATE_ISO }}"
+                     class="input input-sm input-bordered"
+                     required>
+            </label>
+            <button type="submit" class="btn btn-sm btn-primary">Apply Dates</button>
+          </div>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  {% if range_error %}
+    <div role="alert" class="alert alert-error alert-soft text-sm shadow-sm">
+      <span>{{ range_error }}</span>
+    </div>
+  {% endif %}
+
+  <!-- Hero At-a-Glance Strip -->
+  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <!-- Today -->
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
+      <div class="card-body p-3.5 sm:p-4 gap-1.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-base-content/60">
+            Today &middot; {{ company }} {{ group }}
+          </span>
+          <span class="text-xs text-base-content/60">{{ schedule.today_entry.short_day }}, {{ schedule.today_entry.formatted_date }}</span>
+        </div>
+        <div class="flex items-center justify-between gap-2 pt-0.5">
+          <div class="flex items-center gap-2">
+            {{ ui.shift_badge(schedule.today_entry.shift) }}
+            {% if schedule.today_entry.holiday %}
+              <span class="badge badge-warning badge-soft badge-xs font-medium">{{ schedule.today_entry.holiday }}</span>
+            {% endif %}
+          </div>
+          <span class="text-xs text-base-content/65">
+            Tomorrow: <strong class="font-semibold text-base-content">{{ schedule.tomorrow_entry.shift }}</strong>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Next Off Day -->
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
+      <div class="card-body p-3.5 sm:p-4 gap-1.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-base-content/60">Next Off Day</span>
+          {{ icons.clock("w-4 h-4 text-emerald-600") }}
+        </div>
+        {% if schedule.next_off_date is not none %}
+          <div class="flex items-baseline justify-between gap-2">
+            <span class="text-base sm:text-lg font-bold text-emerald-700 dark:text-emerald-300">
+              {{ format_countdown(schedule.days_until_off) }}
+            </span>
+            <span class="text-xs text-base-content/70">{{ schedule.next_off_date.strftime("%a, %d %b %Y") }}</span>
+          </div>
+        {% else %}
+          <span class="text-sm text-base-content/60">No off day found</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Next Long Weekend -->
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
+      <div class="card-body p-3.5 sm:p-4 gap-1.5">
+        <div class="flex items-center justify-between gap-2">
+          <span class="text-xs font-semibold uppercase tracking-wider text-base-content/60">Next Fri+Sat Off</span>
+          {{ icons.sparkles("w-4 h-4 text-primary") }}
+        </div>
+        {% if schedule.next_long_weekend %}
+          <div class="flex items-baseline justify-between gap-2">
+            <span class="text-base sm:text-lg font-bold">
+              {{ format_countdown(schedule.next_long_weekend.days_away) }}
+            </span>
+            <span class="text-xs text-base-content/70">
+              {{ schedule.next_long_weekend.friday.date.strftime("%d %b") }} – {{ schedule.next_long_weekend.saturday.date.strftime("%d %b") }}
+            </span>
+          </div>
+        {% else %}
+          <span class="text-sm text-base-content/60">None in next 90 days</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Range Summary & Legend -->
+  <div class="flex flex-col md:flex-row md:items-center justify-between gap-2.5 px-1">
+    <div class="flex flex-wrap items-center gap-1.5 text-xs">
+      <span class="font-semibold text-base-content/75 mr-1">
+        {{ start_display }} – {{ end_display }} ({{ schedule.summary.total_days }}d):
+      </span>
+      <span class="badge badge-sm shift-badge-morning">M {{ schedule.summary.morning_days }}</span>
+      <span class="badge badge-sm shift-badge-afternoon">A {{ schedule.summary.afternoon_days }}</span>
+      <span class="badge badge-sm shift-badge-night">N {{ schedule.summary.night_days }}</span>
+      <span class="badge badge-sm shift-badge-off">Off {{ schedule.summary.off_days }}</span>
+      <span class="badge badge-sm badge-warning badge-soft">{{ schedule.summary.holiday_count }} Holidays</span>
+      <span class="badge badge-sm badge-primary badge-soft">{{ schedule.summary.long_weekend_count }} Long Wknds</span>
+    </div>
+    {{ ui.legend_bar() }}
+  </div>
+
+  <!-- Active View Panel (Tabs + Content) -->
+  <div id="view-panel">
+    {% include "partials/view_panel.html" %}
+  </div>
+</section>

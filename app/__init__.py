@@ -1,0 +1,1 @@
+"""KNPC Schedule domain package."""

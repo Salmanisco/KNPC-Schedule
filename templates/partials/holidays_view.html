@@ -1,0 +1,56 @@
+{% import "macros/icons.html" as icons %}
+{% import "macros/ui.html" as ui %}
+
+<div class="space-y-3">
+  <div class="flex flex-wrap items-center justify-between gap-2 px-1">
+    <div>
+      <h2 class="text-base sm:text-lg font-bold">Kuwait Official Holidays</h2>
+      <p class="text-xs text-base-content/65">
+        Public holidays in Kuwait alongside {{ company }} Group {{ group }}'s assigned shift.
+      </p>
+    </div>
+    <span class="badge badge-warning badge-soft font-semibold">
+      {{ schedule.holidays_list|length }} holidays
+    </span>
+  </div>
+
+  {% if schedule.holidays_list %}
+    <div class="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="table table-sm sm:table-md">
+          <thead>
+            <tr class="bg-base-200/60">
+              <th>Date</th>
+              <th>Day</th>
+              <th>Holiday</th>
+              <th>Your Shift</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in schedule.holidays_list %}
+              <tr hx-get="/day/{{ e.iso }}?company={{ company }}&group={{ group }}"
+                  hx-target="#day-modal-body"
+                  hx-swap="innerHTML"
+                  class="hover:bg-base-200/50 cursor-pointer shift-row-holiday">
+                <td class="font-medium whitespace-nowrap">{{ e.formatted_date }}</td>
+                <td class="text-base-content/75 whitespace-nowrap">{{ e.day_name }}</td>
+                <td class="font-semibold">{{ e.holiday }}</td>
+                <td>{{ ui.shift_badge(e.shift) }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% else %}
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
+      <div class="card-body items-center text-center py-10">
+        {{ icons.flag("w-8 h-8 text-base-content/35") }}
+        <h3 class="font-semibold text-base">No Kuwaiti holidays in this date range</h3>
+        <p class="text-xs text-base-content/60 max-w-sm">
+          Expand your date range to view upcoming official Kuwaiti holidays.
+        </p>
+      </div>
+    </div>
+  {% endif %}
+</div>
