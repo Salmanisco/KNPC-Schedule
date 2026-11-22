@@ -8,15 +8,18 @@ client = TestClient(app)
 
 
 def test_full_page_load_mobile_pwa_shell():
-    """GET / renders minimal top bar, bottom dock, settings drawer, and Next 8 Days strip."""
+    """GET / renders minimal top bar, bottom dock, settings drawer, and zero-scroll Month view."""
     resp = client.get("/")
     assert resp.status_code == 200
     assert "<!DOCTYPE html>" in resp.text
     assert "KNPC Schedule" in resp.text
-    assert "Shift rotations, long weekends &amp; Kuwaiti holidays" not in resp.text
+    assert "Year Grid" not in resp.text
+    assert "Next Off" in resp.text
+    assert "Full Wknd" in resp.text
+    assert 'name="cal_month"' in resp.text
+    assert 'name="cal_year"' in resp.text
     assert 'id="bottom-dock"' in resp.text
     assert 'id="settings-drawer"' in resp.text
-    assert "Next 8 Days" in resp.text
     assert resp.headers.get("vary") == "HX-Request, Cookie"
     assert resp.headers.get("cache-control") == "private, no-cache"
 
@@ -50,8 +53,8 @@ def test_save_preference_cookie_and_shared_override():
     assert save_client.cookies.get("knpc_pref") == "KOC:B:3months"
 
 
-def test_htmx_view_panel_all_views_and_calendar_modes():
-    """HX-Target=view-panel renders view fragment + OOB nav & settings state sync."""
+def test_htmx_view_panel_all_views_and_month_year_navigation():
+    """HX-Target=view-panel renders all views and arbitrary month/year calendar picks."""
     for view in ("calendar", "weekends", "holidays", "schedule"):
         resp = client.get(
             f"/?company=KNPC&group=A&view={view}",
@@ -63,13 +66,15 @@ def test_htmx_view_panel_all_views_and_calendar_modes():
         assert 'id="desktop-tabs" hx-swap-oob="innerHTML"' in resp.text
         assert 'id="settings-form-state" hx-swap-oob="innerHTML"' in resp.text
 
-    for cal_mode in ("year", "month", "list"):
-        resp = client.get(
-            f"/?company=KNPC&group=C&view=calendar&cal_mode={cal_mode}",
-            headers={"HX-Request": "true", "HX-Target": "view-panel"},
-        )
-        assert resp.status_code == 200
-        assert "<!DOCTYPE html>" not in resp.text
+    resp_feb_2028 = client.get(
+        "/?company=KNPC&group=A&view=calendar&cal_year=2028&cal_month=2",
+        headers={"HX-Request": "true", "HX-Target": "view-panel"},
+    )
+    assert resp_feb_2028.status_code == 200
+    assert "<!DOCTYPE html>" not in resp_feb_2028.text
+    assert '<option value="2" selected>February</option>' in resp_feb_2028.text
+    assert '<option value="2028" selected>2028</option>' in resp_feb_2028.text
+    assert "/day/2028-02-29" in resp_feb_2028.text
 
 
 def test_invalid_custom_date_range_shows_alert():
@@ -91,7 +96,7 @@ def test_day_detail_modal_endpoint():
 
 
 def test_exports_health_pwa_and_static_assets():
-    """CSV, ICS, /health, /sw.js, manifest, and static assets return expected responses."""
+    """CSV, timed ICS, /health, /sw.js, manifest, and static assets return expected responses."""
     csv_resp = client.get("/export/csv?company=KOC&group=D&range=week")
     assert csv_resp.status_code == 200
     assert csv_resp.headers["content-type"].startswith("text/csv")
@@ -102,6 +107,8 @@ def test_exports_health_pwa_and_static_assets():
     assert ics_resp.status_code == 200
     assert ics_resp.headers["content-type"].startswith("text/calendar")
     assert "BEGIN:VCALENDAR" in ics_resp.text
+    assert "TZID:Asia/Kuwait" in ics_resp.text
+    assert "DTSTART;TZID=Asia/Kuwait:" in ics_resp.text
 
     health_resp = client.get("/health")
     assert health_resp.status_code == 200

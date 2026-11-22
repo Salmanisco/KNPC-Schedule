@@ -1,241 +1,135 @@
 {% import "macros/icons.html" as icons %}
-{% import "macros/ui.html" as ui %}
 
 {% set common_start = start_iso if range_key == 'custom' else None %}
 {% set common_end = end_iso if range_key == 'custom' else None %}
 
-<div class="space-y-3">
-  <!-- Calendar Sub-Mode Switcher & Compact Legend -->
-  <div class="flex flex-wrap items-center justify-between gap-2 no-print">
-    <div class="join bg-base-100 border border-base-300 rounded-lg p-0.5">
-      {% for mode_key, mode_label in (("year", "Year Grid"), ("month", "Month"), ("list", "List")) %}
-        {% set mode_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='calendar', cal_mode=mode_key, month=active_month_key if mode_key == 'month' else None) %}
-        <a href="{{ mode_url }}"
-           hx-get="{{ mode_url }}"
+<div class="card bg-base-100 border border-base-300 shadow-sm">
+  <div class="card-body p-2.5 sm:p-4 gap-2">
+    <!-- Month / Year Navigation Bar -->
+    <div class="flex items-center justify-between gap-1.5">
+      {% if prev_month_key %}
+        {% set prev_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='calendar', month=prev_month_key) %}
+        <a href="{{ prev_url }}"
+           hx-get="{{ prev_url }}"
            hx-target="#view-panel"
            hx-swap="innerHTML"
            hx-push-url="true"
            hx-indicator="#htmx-loader"
-           class="btn btn-xs sm:btn-sm join-item {{ 'btn-primary' if cal_mode == mode_key else 'btn-ghost' }}">
-          {{ mode_label }}
+           class="btn btn-sm btn-ghost btn-square shrink-0"
+           aria-label="Previous month">
+          {{ icons.chevron_left("w-4 h-4") }}
         </a>
-      {% endfor %}
-    </div>
+      {% else %}
+        <span class="btn btn-sm btn-ghost btn-square btn-disabled opacity-35 shrink-0">{{ icons.chevron_left("w-4 h-4") }}</span>
+      {% endif %}
 
-    <div class="hidden sm:block">
-      {{ ui.legend_bar() }}
-    </div>
-  </div>
+      <div class="flex items-center justify-center gap-1.5 min-w-0">
+        <form hx-get="/"
+              hx-target="#view-panel"
+              hx-swap="innerHTML"
+              hx-push-url="true"
+              hx-indicator="#htmx-loader"
+              class="flex items-center gap-1.5">
+          <input type="hidden" name="company" value="{{ company }}">
+          <input type="hidden" name="group" value="{{ group }}">
+          <input type="hidden" name="range" value="{{ range_key }}">
+          {% if common_start %}<input type="hidden" name="start" value="{{ common_start }}">{% endif %}
+          {% if common_end %}<input type="hidden" name="end" value="{{ common_end }}">{% endif %}
+          <input type="hidden" name="view" value="calendar">
 
-  {% if cal_mode == "month" and active_month_grid %}
-    <!-- Single Month Focus View -->
-    <div class="card bg-base-100 border border-base-300 shadow-sm">
-      <div class="card-body p-3 sm:p-5 gap-3">
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-1.5 sm:gap-2">
-            {% if prev_month_key %}
-              {% set prev_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='calendar', cal_mode='month', month=prev_month_key) %}
-              <a href="{{ prev_url }}"
-                 hx-get="{{ prev_url }}"
-                 hx-target="#view-panel"
-                 hx-swap="innerHTML"
-                 hx-push-url="true"
-                 class="btn btn-sm btn-ghost btn-square"
-                 aria-label="Previous month">
-                {{ icons.chevron_left("w-4 h-4") }}
-              </a>
-            {% else %}
-              <span class="btn btn-sm btn-ghost btn-square btn-disabled opacity-35">{{ icons.chevron_left("w-4 h-4") }}</span>
-            {% endif %}
-
-            <h2 class="text-base sm:text-lg font-bold tracking-tight">{{ active_month_grid.label }}</h2>
-
-            {% if next_month_key %}
-              {% set next_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='calendar', cal_mode='month', month=next_month_key) %}
-              <a href="{{ next_url }}"
-                 hx-get="{{ next_url }}"
-                 hx-target="#view-panel"
-                 hx-swap="innerHTML"
-                 hx-push-url="true"
-                 class="btn btn-sm btn-ghost btn-square"
-                 aria-label="Next month">
-                {{ icons.chevron_right("w-4 h-4") }}
-              </a>
-            {% else %}
-              <span class="btn btn-sm btn-ghost btn-square btn-disabled opacity-35">{{ icons.chevron_right("w-4 h-4") }}</span>
-            {% endif %}
-          </div>
-
-          <div class="flex items-center gap-1.5 text-xs">
-            {% if active_month_grid.long_weekend_count %}
-              <span class="badge badge-xs sm:badge-sm badge-primary badge-soft">{{ active_month_grid.long_weekend_count }} Fri+Sat Off</span>
-            {% endif %}
-            {% if active_month_grid.holiday_count %}
-              <span class="badge badge-xs sm:badge-sm badge-warning badge-soft">{{ active_month_grid.holiday_count }} Hol</span>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="grid grid-cols-7 gap-1 sm:gap-1.5 text-center text-[11px] font-semibold uppercase tracking-wider">
-          {% for hdr in WEEKDAY_HEADERS %}
-            <div class="py-1 {{ 'text-primary' if hdr in ('Fr', 'Sa') else 'text-base-content/55' }}">{{ hdr }}</div>
-          {% endfor %}
-        </div>
-
-        <div class="grid grid-cols-7 gap-1 sm:gap-1.5">
-          {% for week in active_month_grid.weeks %}
-            {% for cell in week %}
-              {% if cell is none %}
-                <div class="min-h-[3.5rem] sm:min-h-[5rem] rounded-lg bg-base-200/35"></div>
-              {% else %}
-                {% set e = cell.entry %}
-                {% set meta = SHIFT_META[e.shift] %}
-                <button type="button"
-                        hx-get="/day/{{ e.iso }}?company={{ company }}&group={{ group }}"
-                        hx-target="#day-modal-body"
-                        hx-swap="innerHTML"
-                        class="min-h-[3.5rem] sm:min-h-[5rem] rounded-lg border p-1 sm:p-1.5 text-left flex flex-col justify-between transition active:scale-95 sm:hover:brightness-95 focus-visible:outline-2 focus-visible:outline-primary cursor-pointer {{ meta.cell_class }} {{ 'opacity-45' if not cell.in_range }} {{ 'ring-2 ring-primary ring-offset-1 ring-offset-base-100' if e.is_today }} {{ 'border-2 border-emerald-500/80' if e.is_long_weekend and not e.is_today }}">
-                  <div class="flex items-start justify-between gap-1 w-full">
-                    <span class="text-xs sm:text-sm font-bold leading-none tabular-nums">{{ cell.day_num }}</span>
-                    {% if e.holiday %}
-                      <span class="w-2 h-2 rounded-full bg-amber-400 ring-1 ring-amber-600/50 shrink-0" title="{{ e.holiday }}"></span>
-                    {% endif %}
-                  </div>
-                  <div class="space-y-0.5 w-full">
-                    <div class="text-[10px] sm:text-xs font-semibold leading-tight truncate">
-                      <span class="sm:hidden">{{ e.shift_short }}</span>
-                      <span class="hidden sm:inline">{{ e.shift }}</span>
-                    </div>
-                    {% if e.holiday %}
-                      <div class="hidden sm:block text-[10px] leading-tight truncate opacity-85" title="{{ e.holiday }}">
-                        {{ e.holiday }}
-                      </div>
-                    {% endif %}
-                  </div>
-                </button>
-              {% endif %}
+          <select name="cal_month"
+                  aria-label="Select month"
+                  onchange="this.form.requestSubmit()"
+                  class="select select-sm select-bordered bg-base-100 font-bold text-xs sm:text-sm pr-7">
+            {% for m_num, m_name in MONTH_NAMES %}
+              <option value="{{ m_num }}" {{ 'selected' if m_num == cal_month }}>{{ m_name }}</option>
             {% endfor %}
-          {% endfor %}
-        </div>
+          </select>
+
+          <select name="cal_year"
+                  aria-label="Select year"
+                  onchange="this.form.requestSubmit()"
+                  class="select select-sm select-bordered bg-base-100 font-bold text-xs sm:text-sm pr-7 tabular-nums">
+            {% for yr in CALENDAR_YEARS %}
+              <option value="{{ yr }}" {{ 'selected' if yr == cal_year }}>{{ yr }}</option>
+            {% endfor %}
+          </select>
+        </form>
+
+        {% if not is_current_month %}
+          {% set today_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='calendar') %}
+          <a href="{{ today_url }}"
+             hx-get="{{ today_url }}"
+             hx-target="#view-panel"
+             hx-swap="innerHTML"
+             hx-push-url="true"
+             hx-indicator="#htmx-loader"
+             class="btn btn-xs btn-primary btn-soft shrink-0">
+            Today
+          </a>
+        {% endif %}
       </div>
+
+      {% if next_month_key %}
+        {% set next_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='calendar', month=next_month_key) %}
+        <a href="{{ next_url }}"
+           hx-get="{{ next_url }}"
+           hx-target="#view-panel"
+           hx-swap="innerHTML"
+           hx-push-url="true"
+           hx-indicator="#htmx-loader"
+           class="btn btn-sm btn-ghost btn-square shrink-0"
+           aria-label="Next month">
+          {{ icons.chevron_right("w-4 h-4") }}
+        </a>
+      {% else %}
+        <span class="btn btn-sm btn-ghost btn-square btn-disabled opacity-35 shrink-0">{{ icons.chevron_right("w-4 h-4") }}</span>
+      {% endif %}
     </div>
 
-  {% elif cal_mode == "list" %}
-    <!-- Agenda List View grouped by Month -->
-    <div class="space-y-4">
-      {% for grid in schedule.month_grids %}
-        <div class="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
-          <div class="px-4 py-2.5 bg-base-200/60 border-b border-base-300 flex items-center justify-between">
-            <h2 class="font-bold text-sm sm:text-base">{{ grid.label }}</h2>
-            <div class="flex items-center gap-1.5 text-xs">
-              {% if grid.long_weekend_count %}
-                <span class="badge badge-xs badge-primary badge-soft">{{ grid.long_weekend_count }} Fri+Sat Off</span>
-              {% endif %}
-              {% if grid.holiday_count %}
-                <span class="badge badge-xs badge-warning badge-soft">{{ grid.holiday_count }} Hol</span>
-              {% endif %}
-            </div>
-          </div>
-          <div class="divide-y divide-base-200">
-            {% for week in grid.weeks %}
-              {% for cell in week %}
-                {% if cell is not none and cell.in_range %}
-                  {% set e = cell.entry %}
-                  <button type="button"
-                          hx-get="/day/{{ e.iso }}?company={{ company }}&group={{ group }}"
-                          hx-target="#day-modal-body"
-                          hx-swap="innerHTML"
-                          class="w-full px-3.5 sm:px-4 py-2.5 flex items-center justify-between gap-3 text-left hover:bg-base-200/50 active:bg-base-200 transition cursor-pointer {{ 'shift-row-holiday' if e.holiday }} {{ 'ring-1 ring-inset ring-primary/40 bg-primary/5' if e.is_today }}">
-                    <div class="flex items-center gap-3 min-w-0">
-                      <div class="w-10 shrink-0 text-center">
-                        <div class="text-sm font-bold leading-tight tabular-nums">{{ "%02d"|format(e.date.day) }}</div>
-                        <div class="text-[11px] uppercase {{ 'text-primary font-semibold' if e.is_weekend_day else 'text-base-content/55' }}">{{ e.short_day }}</div>
-                      </div>
-                      <div class="min-w-0">
-                        <div class="text-xs sm:text-sm font-medium flex flex-wrap items-center gap-1.5">
-                          <span>{{ e.formatted_date }}</span>
-                          {% if e.is_today %}
-                            <span class="badge badge-primary badge-xs">Today</span>
-                          {% endif %}
-                          {% if e.is_long_weekend %}
-                            <span class="badge badge-success badge-soft badge-xs">Long Weekend</span>
-                          {% endif %}
-                        </div>
-                        {% if e.holiday %}
-                          <p class="text-xs text-amber-700 dark:text-amber-300 font-medium truncate">{{ e.holiday }}</p>
-                        {% endif %}
-                      </div>
-                    </div>
-                    {{ ui.shift_badge(e.shift) }}
-                  </button>
-                {% endif %}
-              {% endfor %}
-            {% endfor %}
-          </div>
-        </div>
+    <!-- Sunday-First Weekday Header -->
+    <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-wider">
+      {% for hdr in WEEKDAY_HEADERS %}
+        <div class="py-0.5 {{ 'text-primary' if hdr in ('Fr', 'Sa') else 'text-base-content/55' }}">{{ hdr }}</div>
       {% endfor %}
     </div>
 
-  {% else %}
-    <!-- Multi-Month Year Grid (Default) -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-      {% for grid in schedule.month_grids %}
-        {% set focus_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='calendar', cal_mode='month', month=grid.month_key) %}
-        <div class="card bg-base-100 border border-base-300 shadow-sm">
-          <div class="card-body p-3 sm:p-3.5 gap-2">
-            <div class="flex items-center justify-between gap-2">
-              <a href="{{ focus_url }}"
-                 hx-get="{{ focus_url }}"
-                 hx-target="#view-panel"
-                 hx-swap="innerHTML"
-                 hx-push-url="true"
-                 hx-indicator="#htmx-loader"
-                 class="font-bold text-sm hover:text-primary transition-colors">
-                {{ grid.label }}
-              </a>
-              <div class="flex items-center gap-1">
-                {% if grid.long_weekend_count %}
-                  <span class="badge badge-xs badge-primary badge-soft" title="Long Weekends (Fri & Sat Off)">{{ grid.long_weekend_count }} LW</span>
-                {% endif %}
-                {% if grid.holiday_count %}
-                  <span class="badge badge-xs badge-warning badge-soft" title="Kuwaiti Holidays">{{ grid.holiday_count }} H</span>
+    <!-- Single Month Day Grid -->
+    <div class="grid grid-cols-7 gap-1 sm:gap-1.5">
+      {% for week in active_month_grid.weeks %}
+        {% for cell in week %}
+          {% if cell is none %}
+            <div class="min-h-[2.75rem] sm:min-h-[4.25rem] rounded-lg bg-base-200/35"></div>
+          {% else %}
+            {% set e = cell.entry %}
+            {% set meta = SHIFT_META[e.shift] %}
+            <button type="button"
+                    hx-get="/day/{{ e.iso }}?company={{ company }}&group={{ group }}"
+                    hx-target="#day-modal-body"
+                    hx-swap="innerHTML"
+                    title="{{ e.formatted_date }} · {{ e.shift }}{% if e.holiday %} · {{ e.holiday }}{% endif %}"
+                    class="min-h-[2.75rem] sm:min-h-[4.25rem] rounded-lg border p-1 sm:p-1.5 text-left flex flex-col justify-between transition active:scale-95 sm:hover:brightness-95 focus-visible:outline-2 focus-visible:outline-primary cursor-pointer {{ meta.cell_class }} {{ 'ring-2 ring-primary ring-offset-1 ring-offset-base-100' if e.is_today }} {{ 'border-2 border-emerald-500/80' if e.is_long_weekend and not e.is_today }}">
+              <div class="flex items-start justify-between gap-0.5 w-full">
+                <span class="text-xs sm:text-sm font-bold leading-none tabular-nums">{{ cell.day_num }}</span>
+                {% if e.holiday %}
+                  <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-400 ring-1 ring-amber-600/50 shrink-0" title="{{ e.holiday }}"></span>
                 {% endif %}
               </div>
-            </div>
-
-            <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-semibold uppercase">
-              {% for hdr in WEEKDAY_HEADERS %}
-                <div class="{{ 'text-primary' if hdr in ('Fr', 'Sa') else 'text-base-content/50' }}">{{ hdr }}</div>
-              {% endfor %}
-            </div>
-
-            <div class="grid grid-cols-7 gap-1">
-              {% for week in grid.weeks %}
-                {% for cell in week %}
-                  {% if cell is none %}
-                    <div class="h-10 sm:h-9 rounded-md"></div>
-                  {% else %}
-                    {% set e = cell.entry %}
-                    {% set meta = SHIFT_META[e.shift] %}
-                    <button type="button"
-                            hx-get="/day/{{ e.iso }}?company={{ company }}&group={{ group }}"
-                            hx-target="#day-modal-body"
-                            hx-swap="innerHTML"
-                            title="{{ e.formatted_date }} · {{ e.shift }}{% if e.holiday %} · {{ e.holiday }}{% endif %}"
-                            class="relative h-10 sm:h-9 rounded-md border flex flex-col items-center justify-center leading-none transition active:scale-95 sm:hover:scale-[1.03] focus-visible:outline-2 focus-visible:outline-primary cursor-pointer {{ meta.cell_class }} {{ 'opacity-40' if not cell.in_range }} {{ 'ring-2 ring-primary ring-offset-1 ring-offset-base-100' if e.is_today }} {{ 'border-2 border-emerald-500/80' if e.is_long_weekend and not e.is_today }}">
-                      <span class="text-[11px] font-bold tabular-nums">{{ cell.day_num }}</span>
-                      <span class="text-[9px] font-semibold opacity-80">{{ e.shift_short }}</span>
-                      {% if e.holiday %}
-                        <span class="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-amber-400 ring-1 ring-amber-700/40" aria-hidden="true"></span>
-                      {% endif %}
-                    </button>
-                  {% endif %}
-                {% endfor %}
-              {% endfor %}
-            </div>
-          </div>
-        </div>
+              <div class="w-full space-y-0.5">
+                <div class="text-[10px] sm:text-xs font-semibold leading-tight truncate">
+                  <span class="sm:hidden">{{ e.shift_short }}</span>
+                  <span class="hidden sm:inline">{{ e.shift }}</span>
+                </div>
+                {% if e.holiday %}
+                  <div class="hidden sm:block text-[10px] leading-tight truncate opacity-85" title="{{ e.holiday }}">
+                    {{ e.holiday }}
+                  </div>
+                {% endif %}
+              </div>
+            </button>
+          {% endif %}
+        {% endfor %}
       {% endfor %}
     </div>
-  {% endif %}
+  </div>
 </div>

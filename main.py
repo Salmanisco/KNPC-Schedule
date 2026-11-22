@@ -20,6 +20,7 @@ from app.schedule import (
     SHIFT_META,
     WEEKDAY_HEADERS,
     build_schedule,
+    build_single_month_grid,
     export_csv,
     export_ics,
     format_countdown,
@@ -35,7 +36,6 @@ STATIC_DIR = BASE_DIR / "public" / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"
 
 VALID_VIEWS = ("calendar", "weekends", "holidays", "schedule")
-VALID_CAL_MODES = ("year", "month", "list")
 VALID_SHIFT_FILTERS = ("all", "Morning", "Afternoon", "Night", "Off", "holiday")
 PREF_COOKIE_NAME = "knpc_pref"
 
@@ -53,6 +53,21 @@ templates.env.globals["WEEKDAY_HEADERS"] = WEEKDAY_HEADERS
 templates.env.globals["MIN_DATE_ISO"] = MIN_DATE.isoformat()
 templates.env.globals["MAX_DATE_ISO"] = MAX_DATE.isoformat()
 templates.env.globals["format_countdown"] = format_countdown
+templates.env.globals["MONTH_NAMES"] = (
+    (1, "January"),
+    (2, "February"),
+    (3, "March"),
+    (4, "April"),
+    (5, "May"),
+    (6, "June"),
+    (7, "July"),
+    (8, "August"),
+    (9, "September"),
+    (10, "October"),
+    (11, "November"),
+    (12, "December"),
+)
+templates.env.globals["CALENDAR_YEARS"] = tuple(range(MIN_DATE.year, MAX_DATE.year + 1))
 
 
 def _parse_pref_cookie(cookie_value: str | None) -> tuple[str | None, str | None, str | None]:
@@ -98,16 +113,32 @@ def _normalize_view(value: str | None) -> str:
     return "calendar"
 
 
-def _normalize_cal_mode(value: str | None) -> str:
-    if value and value.strip().lower() in VALID_CAL_MODES:
-        return value.strip().lower()
-    return "year"
-
-
 def _normalize_shift_filter(value: str | None) -> str:
     if value and value.strip() in VALID_SHIFT_FILTERS:
         return value.strip()
     return "all"
+
+
+def _resolve_target_month(
+    today: date,
+    month_str: str | None,
+    cal_year: int | None,
+    cal_month: int | None,
+) -> tuple[int, int]:
+    target_year = today.year
+    target_month = today.month
+    if month_str and "-" in month_str:
+        parts = month_str.split("-", 1)
+        if parts[0].isdigit() and parts[1].isdigit():
+            target_year = int(parts[0])
+            target_month = int(parts[1])
+    if cal_year is not None:
+        target_year = cal_year
+    if cal_month is not None:
+        target_month = cal_month
+    target_year = max(MIN_DATE.year, min(MAX_DATE.year, target_year))
+    target_month = max(1, min(12, target_month))
+    return target_year, target_month
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -119,8 +150,9 @@ async def index(
     start: str | None = Query(default=None),
     end: str | None = Query(default=None),
     view: str | None = Query(default="calendar"),
-    cal_mode: str | None = Query(default="year"),
     month: str | None = Query(default=None),
+    cal_year: int | None = Query(default=None),
+    cal_month: int | None = Query(default=None),
     shift_filter: str | None = Query(default="all"),
     save: bool = Query(default=False),
 ) -> HTMLResponse:
@@ -139,7 +171,6 @@ async def index(
         effective_range_input, start, end, today
     )
     norm_view = _normalize_view(view)
-    norm_cal_mode = _normalize_cal_mode(cal_mode)
     norm_filter = _normalize_shift_filter(shift_filter)
 
     is_shared_override = bool(
@@ -165,20 +196,21 @@ async def index(
         today=today,
     )
 
-    month_grids = schedule.month_grids
-    active_month_idx = 0
-    if month:
-        for idx, grid in enumerate(month_grids):
-            if grid.month_key == month:
-                active_month_idx = idx
-                break
-    active_month_grid = month_grids[active_month_idx] if month_grids else None
-    prev_month_key = month_grids[active_month_idx - 1].month_key if active_month_idx > 0 else None
-    next_month_key = (
-        month_grids[active_month_idx + 1].month_key
-        if active_month_idx + 1 < len(month_grids)
-        else None
+    target_year, target_month = _resolve_target_month(today, month, cal_year, cal_month)
+    active_month_grid = build_single_month_grid(
+        resolved_company, resolved_group, target_year, target_month, today=today
     )
+    if (target_year, target_month) > (MIN_DATE.year, 1):
+        py, pm = (target_year - 1, 12) if target_month == 1 else (target_year, target_month - 1)
+        prev_month_key: str | None = f"{py:04d}-{pm:02d}"
+    else:
+        prev_month_key = None
+    if (target_year, target_month) < (MAX_DATE.year, 12):
+        ny, nm = (target_year + 1, 1) if target_month == 12 else (target_year, target_month + 1)
+        next_month_key: str | None = f"{ny:04d}-{nm:02d}"
+    else:
+        next_month_key = None
+    is_current_month = (target_year == today.year and target_month == today.month)
 
     if norm_filter == "holiday":
         filtered_entries = tuple(e for e in schedule.entries if e.holiday)
@@ -192,12 +224,11 @@ async def index(
         "group": resolved_group,
         "range": norm_range,
         "view": norm_view,
-        "cal_mode": norm_cal_mode,
     }
     if norm_range == "custom":
         base_params["start"] = start_d.isoformat()
         base_params["end"] = end_d.isoformat()
-    if active_month_grid and norm_cal_mode == "month":
+    if norm_view == "calendar" and not is_current_month:
         base_params["month"] = active_month_grid.month_key
     if norm_filter != "all":
         base_params["shift_filter"] = norm_filter
@@ -213,9 +244,11 @@ async def index(
         "end_display": end_d.strftime("%d %b %Y"),
         "range_error": range_error,
         "view": norm_view,
-        "cal_mode": norm_cal_mode,
+        "cal_year": target_year,
+        "cal_month": target_month,
+        "is_current_month": is_current_month,
         "active_month_grid": active_month_grid,
-        "active_month_key": active_month_grid.month_key if active_month_grid else "",
+        "active_month_key": active_month_grid.month_key,
         "prev_month_key": prev_month_key,
         "next_month_key": next_month_key,
         "shift_filter": norm_filter,

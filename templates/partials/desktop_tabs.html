@@ -4,7 +4,7 @@
 {% set common_end = end_iso if range_key == 'custom' else None %}
 
 <nav aria-label="Primary views" class="join bg-base-200/75 border border-base-300/80 rounded-full p-0.5">
-  {% set cal_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='calendar', cal_mode=cal_mode, month=active_month_key if cal_mode == 'month' else None) %}
+  {% set cal_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='calendar', month=active_month_key if not is_current_month else None) %}
   <a href="{{ cal_url }}"
      hx-get="{{ cal_url }}"
      hx-target="#view-panel"

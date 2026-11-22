@@ -6,6 +6,7 @@ from app.schedule import (
     EPOCH_DATE,
     SHIFT_CYCLES,
     build_schedule,
+    build_single_month_grid,
     export_csv,
     export_ics,
     get_cycle_position,
@@ -133,19 +134,47 @@ def test_next_8_days_form_strip():
     assert result.next_8_days[3].holiday == "Liberation Day"
 
 
+def test_build_single_month_grid_leap_year():
+    """Standalone single month builder handles leap year February 2028 cleanly."""
+    grid = build_single_month_grid("KNPC", "A", 2028, 2, today=date(2026, 11, 22))
+    assert grid.month_key == "2028-02"
+    assert grid.label == "February 2028"
+    days = [cell for week in grid.weeks for cell in week if cell is not None]
+    assert len(days) == 29
+    assert days[-1].day_num == 29
+    assert all(cell.in_range for cell in days)
+
+
 def test_export_csv_and_ics():
-    """CSV and ICS exporters emit valid structured payloads."""
-    result = build_schedule("KNPC", "A", date(2026, 2, 24), date(2026, 2, 26), today=date(2026, 2, 24))
+    """CSV and timed ICS exporters emit valid structured payloads."""
+    # Oct 6..13, 2024 covers all 4 shifts for KNPC A: Night(6-7), Off(8-9), Morning(10-11), Afternoon(12-13)
+    result = build_schedule("KNPC", "A", date(2024, 10, 6), date(2024, 10, 13), today=date(2024, 10, 6))
 
     csv_text = export_csv(result.entries)
     lines = csv_text.strip().splitlines()
     assert lines[0] == "Date,Day of Week,Shift,Holiday"
-    assert len(lines) == 4
-    assert "2026-02-25,Wednesday," in lines[2]
-    assert "National Day" in lines[2]
+    assert len(lines) == 9
 
     ics_text = export_ics(result.entries, "KNPC", "A")
     assert "BEGIN:VCALENDAR" in ics_text
+    assert "BEGIN:VTIMEZONE" in ics_text
+    assert "TZID:Asia/Kuwait" in ics_text
     assert "END:VCALENDAR" in ics_text
-    assert "SUMMARY:Kuwait Holiday: National Day" in ics_text
-    assert "DTSTART;VALUE=DATE:20260225" in ics_text
+    # Night on Oct 6: 22:00 -> Oct 7 06:00
+    assert "DTSTART;TZID=Asia/Kuwait:20241006T220000" in ics_text
+    assert "DTEND;TZID=Asia/Kuwait:20241007T060000" in ics_text
+    # Off on Oct 8: all-day
+    assert "DTSTART;VALUE=DATE:20241008" in ics_text
+    assert "DTEND;VALUE=DATE:20241009" in ics_text
+    # Morning on Oct 10: 06:00 -> 14:00
+    assert "DTSTART;TZID=Asia/Kuwait:20241010T060000" in ics_text
+    assert "DTEND;TZID=Asia/Kuwait:20241010T140000" in ics_text
+    # Afternoon on Oct 12: 14:00 -> 22:00
+    assert "DTSTART;TZID=Asia/Kuwait:20241012T140000" in ics_text
+    assert "DTEND;TZID=Asia/Kuwait:20241012T220000" in ics_text
+
+    # Holiday check: Feb 25, 2026 National Day remains all-day VALUE=DATE
+    hol_result = build_schedule("KNPC", "A", date(2026, 2, 25), date(2026, 2, 25), today=date(2026, 2, 25))
+    hol_ics = export_ics(hol_result.entries, "KNPC", "A")
+    assert "SUMMARY:Kuwait Holiday: National Day" in hol_ics
+    assert "DTSTART;VALUE=DATE:20260225" in hol_ics

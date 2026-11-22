@@ -81,6 +81,13 @@ SHIFT_META: dict[str, dict[str, str]] = {
     },
 }
 
+# (start_hour, start_min, end_hour, end_min, end_day_offset) in Asia/Kuwait (UTC+3)
+SHIFT_TIMES: dict[str, tuple[int, int, int, int, int]] = {
+    "Morning": (6, 0, 14, 0, 0),
+    "Afternoon": (14, 0, 22, 0, 0),
+    "Night": (22, 0, 6, 0, 1),
+}
+
 
 @dataclass(frozen=True, slots=True)
 class DayEntry:
@@ -416,6 +423,74 @@ def _iter_month_starts(start_date: date, end_date: date) -> list[tuple[int, int]
     return months
 
 
+def _build_month_grid(
+    cal: calendar.Calendar,
+    year: int,
+    month: int,
+    company: str,
+    group: str,
+    today: date,
+    entries_by_date: dict[date, DayEntry] | None = None,
+) -> MonthGrid:
+    """Build a single Sunday-first MonthGrid."""
+    weeks: list[tuple[MonthCell | None, ...]] = []
+    lw_fridays = 0
+    holiday_count = 0
+
+    for week in cal.monthdatescalendar(year, month):
+        cells: list[MonthCell | None] = []
+        for cell_date in week:
+            if cell_date.month != month:
+                cells.append(None)
+                continue
+            if entries_by_date is not None:
+                entry = entries_by_date.get(cell_date)
+                in_range = entry is not None
+                if entry is None:
+                    entry = _make_day_entry(cell_date, company, group, today)
+            else:
+                entry = _make_day_entry(cell_date, company, group, today)
+                in_range = True
+            if in_range:
+                if entry.is_long_weekend and cell_date.weekday() == 4:
+                    lw_fridays += 1
+                if entry.holiday:
+                    holiday_count += 1
+            cells.append(MonthCell(day_num=cell_date.day, entry=entry, in_range=in_range))
+        weeks.append(tuple(cells))
+
+    first_day = date(year, month, 1)
+    return MonthGrid(
+        year=year,
+        month=month,
+        month_key=f"{year:04d}-{month:02d}",
+        label=first_day.strftime("%B %Y"),
+        short_label=first_day.strftime("%b %Y"),
+        weeks=tuple(weeks),
+        long_weekend_count=lw_fridays,
+        holiday_count=holiday_count,
+    )
+
+
+def build_single_month_grid(
+    company: str,
+    group: str,
+    year: int,
+    month: int,
+    today: date | None = None,
+) -> MonthGrid:
+    """Build a standalone Sunday-first MonthGrid for any year/month."""
+    cal = calendar.Calendar(firstweekday=6)
+    return _build_month_grid(
+        cal,
+        year,
+        month,
+        normalize_company(company),
+        normalize_group(group),
+        today or kuwait_today(),
+    )
+
+
 def build_month_grids(
     entries_by_date: dict[date, DayEntry],
     company: str,
@@ -426,46 +501,10 @@ def build_month_grids(
 ) -> tuple[MonthGrid, ...]:
     """Build Sunday-first month grids for every month spanned by [start_date, end_date]."""
     cal = calendar.Calendar(firstweekday=6)
-    grids: list[MonthGrid] = []
-
-    for year, month in _iter_month_starts(start_date, end_date):
-        weeks: list[tuple[MonthCell | None, ...]] = []
-        lw_fridays = 0
-        holiday_count = 0
-
-        for week in cal.monthdatescalendar(year, month):
-            cells: list[MonthCell | None] = []
-            for cell_date in week:
-                if cell_date.month != month:
-                    cells.append(None)
-                    continue
-                entry = entries_by_date.get(cell_date)
-                in_range = entry is not None
-                if entry is None:
-                    entry = _make_day_entry(cell_date, company, group, today)
-                if in_range:
-                    if entry.is_long_weekend and cell_date.weekday() == 4:
-                        lw_fridays += 1
-                    if entry.holiday:
-                        holiday_count += 1
-                cells.append(MonthCell(day_num=cell_date.day, entry=entry, in_range=in_range))
-            weeks.append(tuple(cells))
-
-        first_day = date(year, month, 1)
-        grids.append(
-            MonthGrid(
-                year=year,
-                month=month,
-                month_key=f"{year:04d}-{month:02d}",
-                label=first_day.strftime("%B %Y"),
-                short_label=first_day.strftime("%b %Y"),
-                weeks=tuple(weeks),
-                long_weekend_count=lw_fridays,
-                holiday_count=holiday_count,
-            )
-        )
-
-    return tuple(grids)
+    return tuple(
+        _build_month_grid(cal, year, month, company, group, today, entries_by_date)
+        for year, month in _iter_month_starts(start_date, end_date)
+    )
 
 
 def _find_next_off(company: str, group: str, today: date) -> tuple[date | None, int | None]:
@@ -656,6 +695,16 @@ def export_ics(
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         f"X-WR-CALNAME:{_ics_escape(f'{norm_company} Group {norm_group} Schedule')}",
+        "X-WR-TIMEZONE:Asia/Kuwait",
+        "BEGIN:VTIMEZONE",
+        "TZID:Asia/Kuwait",
+        "BEGIN:STANDARD",
+        "DTSTART:19700101T000000",
+        "TZOFFSETFROM:+0300",
+        "TZOFFSETTO:+0300",
+        "TZNAME:AST",
+        "END:STANDARD",
+        "END:VTIMEZONE",
     ]
 
     for entry in entries:
@@ -665,15 +714,26 @@ def export_ics(
         if entry.is_long_weekend:
             shift_summary += " (Long Weekend)"
 
+        if entry.shift in SHIFT_TIMES:
+            sh, sm, eh, em, end_offset = SHIFT_TIMES[entry.shift]
+            end_date_str = (entry.date + timedelta(days=end_offset)).strftime("%Y%m%d")
+            dtstart_line = f"DTSTART;TZID=Asia/Kuwait:{start_compact}T{sh:02d}{sm:02d}00"
+            dtend_line = f"DTEND;TZID=Asia/Kuwait:{end_date_str}T{eh:02d}{em:02d}00"
+            transp_line = "TRANSP:OPAQUE"
+        else:
+            dtstart_line = f"DTSTART;VALUE=DATE:{start_compact}"
+            dtend_line = f"DTEND;VALUE=DATE:{end_compact}"
+            transp_line = "TRANSP:TRANSPARENT"
+
         lines.extend(
             [
                 "BEGIN:VEVENT",
                 f"UID:shift-{norm_company.lower()}-{norm_group.lower()}-{start_compact}@knpc-schedule",
                 f"DTSTAMP:{dtstamp}",
-                f"DTSTART;VALUE=DATE:{start_compact}",
-                f"DTEND;VALUE=DATE:{end_compact}",
+                dtstart_line,
+                dtend_line,
                 f"SUMMARY:{_ics_escape(shift_summary)}",
-                "TRANSP:TRANSPARENT",
+                transp_line,
                 "END:VEVENT",
             ]
         )

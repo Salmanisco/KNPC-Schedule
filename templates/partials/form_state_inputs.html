@@ -1,6 +1,5 @@
 <input type="hidden" name="view" value="{{ view }}">
-<input type="hidden" name="cal_mode" value="{{ cal_mode }}">
-{% if active_month_key and cal_mode == "month" %}
+{% if not is_current_month and view == "calendar" %}
 <input type="hidden" name="month" value="{{ active_month_key }}">
 {% endif %}
 {% if shift_filter != "all" %}
