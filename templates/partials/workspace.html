@@ -58,35 +58,31 @@
   <!-- Compact Hero Card: Next Off + Full Weekend + Next 8 Days Strip -->
   <div class="card bg-base-100 border border-base-300 shadow-sm">
     <div class="card-body p-3.5 sm:p-4 gap-3.5">
-      <!-- Top Row: 2-line Stacked Stat Tiles -->
+      <!-- Top Row: Symmetrical 3-line Stacked Stat Tiles -->
       <div class="grid grid-cols-2 gap-2.5">
-        <div class="rounded-xl bg-base-200/65 px-3 py-2.5 flex flex-col gap-0.5 min-w-0">
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-base-content/60">Next Off</span>
+        <div class="rounded-xl bg-base-200/65 px-3.5 py-2.5 flex flex-col gap-0.5 min-w-0">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-base-content/60 whitespace-nowrap">Next Off</span>
           {% if schedule.next_off_date is not none %}
-            <div class="flex items-baseline gap-1.5 flex-wrap">
-              <span class="text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight">
-                {{ schedule.next_off_date.strftime("%d %b") }}
-              </span>
-              <span class="text-xs font-medium text-base-content/70">
-                {{ format_countdown(schedule.days_until_off) }}
-              </span>
-            </div>
+            <span class="text-lg font-extrabold text-emerald-600 dark:text-emerald-400 leading-tight whitespace-nowrap">
+              {{ schedule.next_off_date.strftime("%d %b") }}
+            </span>
+            <span class="text-xs font-medium text-base-content/65 whitespace-nowrap">
+              {{ format_countdown(schedule.days_until_off) }}
+            </span>
           {% else %}
             <span class="text-sm text-base-content/55">—</span>
           {% endif %}
         </div>
 
-        <div class="rounded-xl bg-base-200/65 px-3 py-2.5 flex flex-col gap-0.5 min-w-0">
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-base-content/60">Full Weekend</span>
+        <div class="rounded-xl bg-base-200/65 px-3.5 py-2.5 flex flex-col gap-0.5 min-w-0">
+          <span class="text-[11px] font-semibold uppercase tracking-wider text-base-content/60 whitespace-nowrap">Full Weekend</span>
           {% if schedule.next_long_weekend %}
-            <div class="flex items-baseline gap-1.5 flex-wrap">
-              <span class="text-base sm:text-lg font-extrabold text-primary leading-tight">
-                {{ schedule.next_long_weekend.friday.date.strftime("%d") }}–{{ schedule.next_long_weekend.saturday.date.strftime("%d %b") }}
-              </span>
-              <span class="text-xs font-medium text-base-content/70">
-                {{ format_countdown(schedule.next_long_weekend.days_away) }}
-              </span>
-            </div>
+            <span class="text-lg font-extrabold text-primary leading-tight whitespace-nowrap">
+              {{ schedule.next_long_weekend.friday.date.strftime("%d") }}–{{ schedule.next_long_weekend.saturday.date.strftime("%d %b") }}
+            </span>
+            <span class="text-xs font-medium text-base-content/65 whitespace-nowrap">
+              {{ format_countdown(schedule.next_long_weekend.days_away) }}
+            </span>
           {% else %}
             <span class="text-sm text-base-content/55">—</span>
           {% endif %}

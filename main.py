@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import date
 from pathlib import Path
 from urllib.parse import urlencode
@@ -34,6 +35,12 @@ from app.schedule import (
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "public" / "static"
 TEMPLATES_DIR = BASE_DIR / "templates"
+_APP_CSS = STATIC_DIR / "css" / "app.css"
+CSS_VERSION = (
+    hashlib.md5(_APP_CSS.read_bytes(), usedforsecurity=False).hexdigest()[:8]
+    if _APP_CSS.is_file()
+    else "1"
+)
 
 VALID_VIEWS = ("calendar", "weekends", "holidays", "schedule")
 VALID_SHIFT_FILTERS = ("all", "Morning", "Afternoon", "Night", "Off", "holiday")
@@ -52,6 +59,7 @@ templates.env.globals["QUICK_RANGES"] = QUICK_RANGES
 templates.env.globals["WEEKDAY_HEADERS"] = WEEKDAY_HEADERS
 templates.env.globals["MIN_DATE_ISO"] = MIN_DATE.isoformat()
 templates.env.globals["MAX_DATE_ISO"] = MAX_DATE.isoformat()
+templates.env.globals["CSS_VERSION"] = CSS_VERSION
 templates.env.globals["format_countdown"] = format_countdown
 templates.env.globals["MONTH_NAMES"] = (
     (1, "January"),

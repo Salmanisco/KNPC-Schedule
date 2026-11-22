@@ -1,4 +1,4 @@
-const CACHE_NAME = "knpc-schedule-v2";
+const CACHE_NAME = "knpc-schedule-v3";
 const PRECACHE_URLS = [
   "/static/css/app.css",
   "/static/js/htmx.min.js",
