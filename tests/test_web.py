@@ -15,7 +15,7 @@ def test_full_page_load_mobile_pwa_shell():
     assert "KNPC Schedule" in resp.text
     assert "Year Grid" not in resp.text
     assert "Next Off" in resp.text
-    assert "Full Wknd" in resp.text
+    assert "Full Weekend" in resp.text
     assert 'name="cal_month"' in resp.text
     assert 'name="cal_year"' in resp.text
     assert 'id="bottom-dock"' in resp.text

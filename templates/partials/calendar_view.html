@@ -4,7 +4,7 @@
 {% set common_end = end_iso if range_key == 'custom' else None %}
 
 <div class="card bg-base-100 border border-base-300 shadow-sm">
-  <div class="card-body p-2.5 sm:p-4 gap-2">
+  <div class="card-body p-3.5 sm:p-5 gap-3">
     <!-- Month / Year Navigation Bar -->
     <div class="flex items-center justify-between gap-1.5">
       {% if prev_month_key %}
@@ -15,12 +15,12 @@
            hx-swap="innerHTML"
            hx-push-url="true"
            hx-indicator="#htmx-loader"
-           class="btn btn-sm btn-ghost btn-square shrink-0"
+           class="btn btn-md btn-ghost btn-square shrink-0"
            aria-label="Previous month">
-          {{ icons.chevron_left("w-4 h-4") }}
+          {{ icons.chevron_left("w-5 h-5") }}
         </a>
       {% else %}
-        <span class="btn btn-sm btn-ghost btn-square btn-disabled opacity-35 shrink-0">{{ icons.chevron_left("w-4 h-4") }}</span>
+        <span class="btn btn-md btn-ghost btn-square btn-disabled opacity-35 shrink-0">{{ icons.chevron_left("w-5 h-5") }}</span>
       {% endif %}
 
       <div class="flex items-center justify-center gap-1.5 min-w-0">
@@ -40,7 +40,7 @@
           <select name="cal_month"
                   aria-label="Select month"
                   onchange="this.form.requestSubmit()"
-                  class="select select-sm select-bordered bg-base-100 font-bold text-xs sm:text-sm pr-7">
+                  class="select select-bordered h-10 min-w-[8.75rem] w-auto bg-base-100 font-bold text-sm sm:text-base">
             {% for m_num, m_name in MONTH_NAMES %}
               <option value="{{ m_num }}" {{ 'selected' if m_num == cal_month }}>{{ m_name }}</option>
             {% endfor %}
@@ -49,7 +49,7 @@
           <select name="cal_year"
                   aria-label="Select year"
                   onchange="this.form.requestSubmit()"
-                  class="select select-sm select-bordered bg-base-100 font-bold text-xs sm:text-sm pr-7 tabular-nums">
+                  class="select select-bordered h-10 min-w-[5.25rem] w-auto bg-base-100 font-bold text-sm sm:text-base tabular-nums">
             {% for yr in CALENDAR_YEARS %}
               <option value="{{ yr }}" {{ 'selected' if yr == cal_year }}>{{ yr }}</option>
             {% endfor %}
@@ -64,7 +64,7 @@
              hx-swap="innerHTML"
              hx-push-url="true"
              hx-indicator="#htmx-loader"
-             class="btn btn-xs btn-primary btn-soft shrink-0">
+             class="btn btn-sm btn-primary btn-soft shrink-0">
             Today
           </a>
         {% endif %}
@@ -78,28 +78,28 @@
            hx-swap="innerHTML"
            hx-push-url="true"
            hx-indicator="#htmx-loader"
-           class="btn btn-sm btn-ghost btn-square shrink-0"
+           class="btn btn-md btn-ghost btn-square shrink-0"
            aria-label="Next month">
-          {{ icons.chevron_right("w-4 h-4") }}
+          {{ icons.chevron_right("w-5 h-5") }}
         </a>
       {% else %}
-        <span class="btn btn-sm btn-ghost btn-square btn-disabled opacity-35 shrink-0">{{ icons.chevron_right("w-4 h-4") }}</span>
+        <span class="btn btn-md btn-ghost btn-square btn-disabled opacity-35 shrink-0">{{ icons.chevron_right("w-5 h-5") }}</span>
       {% endif %}
     </div>
 
     <!-- Sunday-First Weekday Header -->
-    <div class="grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-wider">
+    <div class="grid grid-cols-7 gap-1.5 sm:gap-2 text-center text-xs font-bold uppercase tracking-wider">
       {% for hdr in WEEKDAY_HEADERS %}
-        <div class="py-0.5 {{ 'text-primary' if hdr in ('Fr', 'Sa') else 'text-base-content/55' }}">{{ hdr }}</div>
+        <div class="py-0.5 {{ 'text-primary' if hdr in ('Fr', 'Sa') else 'text-base-content/60' }}">{{ hdr }}</div>
       {% endfor %}
     </div>
 
     <!-- Single Month Day Grid -->
-    <div class="grid grid-cols-7 gap-1 sm:gap-1.5">
+    <div class="grid grid-cols-7 gap-1.5 sm:gap-2">
       {% for week in active_month_grid.weeks %}
         {% for cell in week %}
           {% if cell is none %}
-            <div class="min-h-[2.75rem] sm:min-h-[4.25rem] rounded-lg bg-base-200/35"></div>
+            <div class="min-h-[3.85rem] sm:min-h-[4.85rem] rounded-xl bg-base-200/35"></div>
           {% else %}
             {% set e = cell.entry %}
             {% set meta = SHIFT_META[e.shift] %}
@@ -108,15 +108,15 @@
                     hx-target="#day-modal-body"
                     hx-swap="innerHTML"
                     title="{{ e.formatted_date }} · {{ e.shift }}{% if e.holiday %} · {{ e.holiday }}{% endif %}"
-                    class="min-h-[2.75rem] sm:min-h-[4.25rem] rounded-lg border p-1 sm:p-1.5 text-left flex flex-col justify-between transition active:scale-95 sm:hover:brightness-95 focus-visible:outline-2 focus-visible:outline-primary cursor-pointer {{ meta.cell_class }} {{ 'ring-2 ring-primary ring-offset-1 ring-offset-base-100' if e.is_today }} {{ 'border-2 border-emerald-500/80' if e.is_long_weekend and not e.is_today }}">
+                    class="min-h-[3.85rem] sm:min-h-[4.85rem] rounded-xl border p-1.5 sm:p-2 text-left flex flex-col justify-between transition active:scale-95 sm:hover:brightness-95 focus-visible:outline-2 focus-visible:outline-primary cursor-pointer {{ meta.cell_class }} {{ 'ring-2 ring-primary ring-offset-1 ring-offset-base-100' if e.is_today }} {{ 'border-2 border-emerald-500/80' if e.is_long_weekend and not e.is_today }}">
               <div class="flex items-start justify-between gap-0.5 w-full">
-                <span class="text-xs sm:text-sm font-bold leading-none tabular-nums">{{ cell.day_num }}</span>
+                <span class="text-sm sm:text-base font-bold leading-none tabular-nums">{{ cell.day_num }}</span>
                 {% if e.holiday %}
-                  <span class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-400 ring-1 ring-amber-600/50 shrink-0" title="{{ e.holiday }}"></span>
+                  <span class="w-2 h-2 rounded-full bg-amber-400 ring-1 ring-amber-600/50 shrink-0" title="{{ e.holiday }}"></span>
                 {% endif %}
               </div>
               <div class="w-full space-y-0.5">
-                <div class="text-[10px] sm:text-xs font-semibold leading-tight truncate">
+                <div class="text-xs sm:text-sm font-bold leading-tight truncate">
                   <span class="sm:hidden">{{ e.shift_short }}</span>
                   <span class="hidden sm:inline">{{ e.shift }}</span>
                 </div>
