@@ -1,4 +1,4 @@
-"""Integration tests for FastAPI routes, HTMX partials, cookies, and static assets."""
+"""Integration tests for FastAPI routes, mobile PWA shell, HTMX partials, and saved prefs."""
 
 from fastapi.testclient import TestClient
 
@@ -7,41 +7,51 @@ from main import app
 client = TestClient(app)
 
 
-def test_full_page_load_and_headers():
-    """GET / returns complete HTML shell with Vary and Cache-Control guards."""
+def test_full_page_load_mobile_pwa_shell():
+    """GET / renders minimal top bar, bottom dock, settings drawer, and Next 8 Days strip."""
     resp = client.get("/")
     assert resp.status_code == 200
     assert "<!DOCTYPE html>" in resp.text
     assert "KNPC Schedule" in resp.text
+    assert "Shift rotations, long weekends &amp; Kuwaiti holidays" not in resp.text
+    assert 'id="bottom-dock"' in resp.text
+    assert 'id="settings-drawer"' in resp.text
+    assert "Next 8 Days" in resp.text
     assert resp.headers.get("vary") == "HX-Request, Cookie"
     assert resp.headers.get("cache-control") == "private, no-cache"
 
 
-def test_htmx_workspace_swap_and_preference_cookie():
-    """HX-Request returns workspace partial and remembers preference cookie."""
-    resp = client.get(
-        "/?company=KOC&group=B&view=weekends",
+def test_save_preference_cookie_and_shared_override():
+    """save=1 writes knpc_pref cookie; shared links view without overwriting saved prefs."""
+    save_client = TestClient(app)
+    resp = save_client.get(
+        "/?company=KOC&group=B&range=3months&view=weekends&save=1",
         headers={"HX-Request": "true"},
     )
     assert resp.status_code == 200
     assert "<!DOCTYPE html>" not in resp.text
     assert "Long Weekends" in resp.text
-    assert "KOC" in resp.text
-    assert resp.cookies.get("knpc_pref") == "KOC:B"
+    assert save_client.cookies.get("knpc_pref") == "KOC:B:3months"
+    assert "save=" not in resp.headers.get("hx-push-url", "")
+    assert 'id="header-identity" hx-swap-oob="innerHTML"' in resp.text
+    assert 'id="settings-drawer-body" hx-swap-oob="innerHTML"' in resp.text
 
-    # Follow-up request with cookie defaults to KOC B
-    resp_cookie = client.get("/", cookies={"knpc_pref": "KOC:B"})
-    assert resp_cookie.status_code == 200
-    assert "Today &middot; KOC B" in resp_cookie.text
+    # Bare / launch restores saved KOC:B:3months from cookie
+    resp_restored = save_client.get("/")
+    assert resp_restored.status_code == 200
+    assert "KOC &middot; Group B" in resp_restored.text
 
-    # Explicit query params override cookie
-    resp_override = client.get("/?company=KNPC&group=D", cookies={"knpc_pref": "KOC:B"})
-    assert resp_override.status_code == 200
-    assert "Today &middot; KNPC D" in resp_override.text
+    # Visiting a shared link without save=1 shows override bar and keeps saved cookie
+    resp_shared = save_client.get("/?company=KNPC&group=D")
+    assert resp_shared.status_code == 200
+    assert "Viewing shared <strong>KNPC Group D</strong>" in resp_shared.text
+    assert "My KOC B" in resp_shared.text
+    assert "Save as mine" in resp_shared.text
+    assert save_client.cookies.get("knpc_pref") == "KOC:B:3months"
 
 
 def test_htmx_view_panel_all_views_and_calendar_modes():
-    """HX-Target=view-panel renders view fragment + OOB form sync across all views."""
+    """HX-Target=view-panel renders view fragment + OOB nav & settings state sync."""
     for view in ("calendar", "weekends", "holidays", "schedule"):
         resp = client.get(
             f"/?company=KNPC&group=A&view={view}",
@@ -49,7 +59,9 @@ def test_htmx_view_panel_all_views_and_calendar_modes():
         )
         assert resp.status_code == 200
         assert "<!DOCTYPE html>" not in resp.text
-        assert 'id="form-state-sync" hx-swap-oob="true"' in resp.text
+        assert 'id="bottom-dock" hx-swap-oob="innerHTML"' in resp.text
+        assert 'id="desktop-tabs" hx-swap-oob="innerHTML"' in resp.text
+        assert 'id="settings-form-state" hx-swap-oob="innerHTML"' in resp.text
 
     for cal_mode in ("year", "month", "list"):
         resp = client.get(
@@ -78,8 +90,8 @@ def test_day_detail_modal_endpoint():
     assert bad_resp.status_code == 400
 
 
-def test_exports_and_health_and_static_assets():
-    """CSV, ICS, /health, and static files all return expected content."""
+def test_exports_health_pwa_and_static_assets():
+    """CSV, ICS, /health, /sw.js, manifest, and static assets return expected responses."""
     csv_resp = client.get("/export/csv?company=KOC&group=D&range=week")
     assert csv_resp.status_code == 200
     assert csv_resp.headers["content-type"].startswith("text/csv")
@@ -95,12 +107,26 @@ def test_exports_and_health_and_static_assets():
     assert health_resp.status_code == 200
     assert health_resp.json() == {"status": "ok"}
 
+    sw_resp = client.get("/sw.js")
+    assert sw_resp.status_code == 200
+    assert "javascript" in sw_resp.headers["content-type"]
+    assert sw_resp.headers.get("cache-control") == "no-cache"
+    assert sw_resp.headers.get("service-worker-allowed") == "/"
+
+    manifest_resp = client.get("/static/manifest.webmanifest")
+    assert manifest_resp.status_code == 200
+    manifest = manifest_resp.json()
+    assert manifest["display"] == "standalone"
+    assert any(icon["sizes"] == "192x192" for icon in manifest["icons"])
+    assert any(icon["sizes"] == "512x512" for icon in manifest["icons"])
+
     for asset in (
         "/static/css/app.css",
         "/static/js/htmx.min.js",
         "/static/img/logo.png",
         "/static/img/favicon.png",
-        "/static/manifest.webmanifest",
+        "/static/img/icon-192.png",
+        "/static/img/icon-512.png",
     ):
         asset_resp = client.get(asset)
         assert asset_resp.status_code == 200, f"Failed asset: {asset}"

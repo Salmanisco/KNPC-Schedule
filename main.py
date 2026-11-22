@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -55,15 +55,20 @@ templates.env.globals["MAX_DATE_ISO"] = MAX_DATE.isoformat()
 templates.env.globals["format_countdown"] = format_countdown
 
 
-def _parse_pref_cookie(cookie_value: str | None) -> tuple[str | None, str | None]:
+def _parse_pref_cookie(cookie_value: str | None) -> tuple[str | None, str | None, str | None]:
     if not cookie_value or ":" not in cookie_value:
-        return None, None
-    raw_company, raw_group = cookie_value.split(":", 1)
-    company = raw_company.strip().upper()
-    group = raw_group.strip().upper()
-    if company in COMPANIES and group in GROUPS:
-        return company, group
-    return None, None
+        return None, None, None
+    parts = cookie_value.split(":", 2)
+    company = parts[0].strip().upper()
+    group = parts[1].strip().upper()
+    if company not in COMPANIES or group not in GROUPS:
+        return None, None, None
+    saved_range: str | None = None
+    if len(parts) == 3:
+        candidate_range = parts[2].strip().lower()
+        if candidate_range in QUICK_RANGES and candidate_range != "custom":
+            saved_range = candidate_range
+    return company, group, saved_range
 
 
 def _build_query_url(base: str = "/", **params: str | None) -> str:
@@ -80,12 +85,11 @@ def _resolve_company_group(
     request: Request,
     company: str | None,
     group: str | None,
-) -> tuple[str, str, bool]:
-    cookie_company, cookie_group = _parse_pref_cookie(request.cookies.get(PREF_COOKIE_NAME))
-    has_explicit = company is not None or group is not None
+) -> tuple[str, str]:
+    cookie_company, cookie_group, _ = _parse_pref_cookie(request.cookies.get(PREF_COOKIE_NAME))
     resolved_company = normalize_company(company or cookie_company)
     resolved_group = normalize_group(group or cookie_group)
-    return resolved_company, resolved_group, has_explicit
+    return resolved_company, resolved_group
 
 
 def _normalize_view(value: str | None) -> str:
@@ -111,23 +115,47 @@ async def index(
     request: Request,
     company: str | None = Query(default=None),
     group: str | None = Query(default=None),
-    range_key: str | None = Query(default="year", alias="range"),
+    range_key: str | None = Query(default=None, alias="range"),
     start: str | None = Query(default=None),
     end: str | None = Query(default=None),
     view: str | None = Query(default="calendar"),
     cal_mode: str | None = Query(default="year"),
     month: str | None = Query(default=None),
     shift_filter: str | None = Query(default="all"),
+    save: bool = Query(default=False),
 ) -> HTMLResponse:
     """Render full page or HTMX partial workspace/view panel."""
     today = kuwait_today()
-    resolved_company, resolved_group, should_set_cookie = _resolve_company_group(
-        request, company, group
+    saved_company, saved_group, saved_range = _parse_pref_cookie(
+        request.cookies.get(PREF_COOKIE_NAME)
     )
-    start_d, end_d, norm_range, range_error = resolve_date_range(range_key, start, end, today)
+    has_saved_pref = saved_company is not None
+
+    resolved_company = normalize_company(company or saved_company)
+    resolved_group = normalize_group(group or saved_group)
+    effective_range_input = range_key or saved_range or "year"
+
+    start_d, end_d, norm_range, range_error = resolve_date_range(
+        effective_range_input, start, end, today
+    )
     norm_view = _normalize_view(view)
     norm_cal_mode = _normalize_cal_mode(cal_mode)
     norm_filter = _normalize_shift_filter(shift_filter)
+
+    is_shared_override = bool(
+        has_saved_pref
+        and (company is not None or group is not None)
+        and not save
+        and (resolved_company != saved_company or resolved_group != saved_group)
+    )
+    should_set_cookie = bool(save)
+
+    cookie_range = norm_range if norm_range != "custom" else (saved_range or "year")
+    if should_set_cookie:
+        has_saved_pref = True
+        saved_company = resolved_company
+        saved_group = resolved_group
+        saved_range = cookie_range
 
     schedule = build_schedule(
         company=resolved_company,
@@ -193,18 +221,31 @@ async def index(
         "shift_filter": norm_filter,
         "filtered_entries": filtered_entries,
         "base_params": base_params,
+        "has_saved_pref": has_saved_pref,
+        "saved_company": saved_company,
+        "saved_group": saved_group,
+        "saved_range": saved_range or "year",
+        "is_shared_override": is_shared_override,
+        "just_saved": should_set_cookie,
     }
 
     is_htmx = request.headers.get("HX-Request") == "true"
     hx_target = request.headers.get("HX-Target", "")
     if is_htmx and hx_target == "view-panel":
         template_name = "partials/view_panel.html"
+        oob_nav = True
+        oob_settings = False
     elif is_htmx:
         template_name = "partials/workspace.html"
+        oob_nav = True
+        oob_settings = True
     else:
         template_name = "index.html"
+        oob_nav = False
+        oob_settings = False
 
-    context["oob_sync"] = template_name == "partials/view_panel.html"
+    context["oob_nav"] = oob_nav
+    context["oob_settings"] = oob_settings
 
     response = templates.TemplateResponse(request=request, name=template_name, context=context)
     response.headers["Vary"] = "HX-Request, Cookie"
@@ -215,7 +256,7 @@ async def index(
     if should_set_cookie:
         response.set_cookie(
             key=PREF_COOKIE_NAME,
-            value=f"{resolved_company}:{resolved_group}",
+            value=f"{resolved_company}:{resolved_group}:{cookie_range}",
             max_age=31536000,
             samesite="lax",
             httponly=False,
@@ -241,7 +282,7 @@ async def day_detail(
         raise HTTPException(status_code=400, detail="Date out of supported range.")
 
     today = kuwait_today()
-    resolved_company, resolved_group, _ = _resolve_company_group(request, company, group)
+    resolved_company, resolved_group = _resolve_company_group(request, company, group)
     detail = get_day_detail(target_date, resolved_company, resolved_group, today=today)
 
     response = templates.TemplateResponse(
@@ -264,7 +305,7 @@ async def download_csv(
 ) -> Response:
     """Download selected schedule range as CSV."""
     today = kuwait_today()
-    resolved_company, resolved_group, _ = _resolve_company_group(request, company, group)
+    resolved_company, resolved_group = _resolve_company_group(request, company, group)
     start_d, end_d, _, _ = resolve_date_range(range_key, start, end, today)
     schedule = build_schedule(resolved_company, resolved_group, start_d, end_d, today=today)
     csv_body = export_csv(schedule.entries)
@@ -287,7 +328,7 @@ async def download_ics(
 ) -> Response:
     """Download selected schedule range and Kuwaiti holidays as an iCalendar (.ics) file."""
     today = kuwait_today()
-    resolved_company, resolved_group, _ = _resolve_company_group(request, company, group)
+    resolved_company, resolved_group = _resolve_company_group(request, company, group)
     start_d, end_d, _, _ = resolve_date_range(range_key, start, end, today)
     schedule = build_schedule(resolved_company, resolved_group, start_d, end_d, today=today)
     ics_body = export_ics(schedule.entries, resolved_company, resolved_group)
@@ -296,6 +337,16 @@ async def download_ics(
         content=ics_body,
         media_type="text/calendar; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@app.get("/sw.js")
+async def service_worker() -> FileResponse:
+    """Serve PWA service worker with no-cache headers for local and container runs."""
+    return FileResponse(
+        BASE_DIR / "public" / "sw.js",
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
     )
 
 

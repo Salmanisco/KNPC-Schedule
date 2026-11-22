@@ -118,6 +118,21 @@ def test_resolve_date_range_validation():
     assert err_span is not None
 
 
+def test_next_8_days_form_strip():
+    """next_8_days always spans 8 consecutive days from today even outside selected range."""
+    today = date(2026, 2, 23)
+    # Deliberately select a range in 2027 to confirm next_8_days remains anchored to today
+    result = build_schedule("KNPC", "A", date(2027, 1, 1), date(2027, 1, 15), today=today)
+
+    assert len(result.next_8_days) == 8
+    assert result.next_8_days[0].date == today
+    assert result.next_8_days[0].is_today is True
+    assert result.next_8_days[-1].date == date(2026, 3, 2)
+    assert [d.date.day for d in result.next_8_days] == [23, 24, 25, 26, 27, 28, 1, 2]
+    assert result.next_8_days[2].holiday == "National Day"
+    assert result.next_8_days[3].holiday == "Liberation Day"
+
+
 def test_export_csv_and_ics():
     """CSV and ICS exporters emit valid structured payloads."""
     result = build_schedule("KNPC", "A", date(2026, 2, 24), date(2026, 2, 26), today=date(2026, 2, 24))

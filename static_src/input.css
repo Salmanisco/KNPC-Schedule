@@ -7,14 +7,29 @@
   themes: winter --default, night --prefersdark;
 }
 
-/* Smooth page rhythm & typography */
+/* Native-app touch feel & typography */
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 4.5rem;
+  scroll-padding-top: 3.75rem;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  overscroll-behavior-y: contain;
+  touch-action: manipulation;
 }
 
 h1, h2, h3, .text-balance {
   text-wrap: balance;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* HTMX top progress bar */
@@ -29,6 +44,61 @@ h1, h2, h3, .text-balance {
 .htmx-request.htmx-loader-bar {
   opacity: 1;
   transform: scaleX(1);
+}
+
+/* Mobile Dock safe-area sizing */
+.mobile-dock {
+  height: calc(3.75rem + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Vibrant Football-Standings Form Pills ("Next 8 Days") */
+.shift-form-morning {
+  background-color: #f59e0b;
+  color: #1c1917;
+  border-color: #d97706;
+}
+
+.shift-form-afternoon {
+  background-color: #e11d48;
+  color: #ffffff;
+  border-color: #be123c;
+}
+
+.shift-form-night {
+  background-color: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+.shift-form-off {
+  background-color: #059669;
+  color: #ffffff;
+  border-color: #047857;
+}
+
+[data-theme="night"] .shift-form-morning {
+  background-color: #f59e0b;
+  color: #1c1917;
+  border-color: #fbbf24;
+}
+
+[data-theme="night"] .shift-form-afternoon {
+  background-color: #e11d48;
+  color: #fff1f2;
+  border-color: #fb7185;
+}
+
+[data-theme="night"] .shift-form-night {
+  background-color: #3b82f6;
+  color: #eff6ff;
+  border-color: #60a5fa;
+}
+
+[data-theme="night"] .shift-form-off {
+  background-color: #10b981;
+  color: #022c22;
+  border-color: #34d399;
 }
 
 /* Shift semantic colors — Light theme (winter) */
@@ -152,7 +222,57 @@ h1, h2, h3, .text-balance {
   box-shadow: inset 3px 0 0 #facc15;
 }
 
-/* Native <dialog> smooth entry animation */
+/* Slide-over Side Settings Drawer */
+dialog#settings-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(23rem, 88vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 1rem 0 0 1rem;
+  transform: translateX(100%);
+  opacity: 0;
+  transition-property: transform, opacity, display, overlay;
+  transition-duration: 0.24s;
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  transition-behavior: allow-discrete;
+}
+
+dialog#settings-drawer[open] {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+@starting-style {
+  dialog#settings-drawer[open] {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+dialog#settings-drawer::backdrop {
+  background-color: rgba(15, 23, 42, 0);
+  backdrop-filter: blur(2px);
+  transition-property: background-color, display, overlay;
+  transition-duration: 0.24s;
+  transition-behavior: allow-discrete;
+}
+
+dialog#settings-drawer[open]::backdrop {
+  background-color: rgba(15, 23, 42, 0.48);
+}
+
+@starting-style {
+  dialog#settings-drawer[open]::backdrop {
+    background-color: rgba(15, 23, 42, 0);
+  }
+}
+
+/* Native day bottom-sheet modal */
 dialog.modal {
   transition-property: opacity, display, overlay;
   transition-duration: 0.2s;
@@ -171,6 +291,8 @@ dialog.modal .modal-box {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  dialog#settings-drawer,
+  dialog#settings-drawer::backdrop,
   dialog.modal,
   dialog.modal .modal-box {
     transition-duration: 0.05s;
@@ -179,6 +301,8 @@ dialog.modal .modal-box {
 
 @media print {
   header,
+  #bottom-dock,
+  dialog#settings-drawer,
   .no-print {
     display: none !important;
   }

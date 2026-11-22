@@ -5,80 +5,100 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>{% block title %}KNPC Schedule{% endblock %}</title>
-  <meta name="description" content="Fast, zero-login KNPC &amp; KOC shift schedule planner with Kuwaiti official holidays, long weekend finder, and CSV/ICS export.">
-  <meta name="theme-color" content="#0f4c81">
+  <meta name="description" content="Mobile-first KNPC &amp; KOC shift schedule PWA with Next 8 Days strip, Kuwaiti official holidays, long weekends, and CSV/ICS export.">
+  <meta id="meta-theme-color" name="theme-color" content="#ffffff">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="KNPC Shifts">
   <link rel="icon" type="image/png" href="/static/img/favicon.png">
   <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
   <link rel="manifest" href="/static/manifest.webmanifest">
   <script>
     (function () {
       try {
-        var saved = localStorage.getItem("knpc-theme");
+        var mode = localStorage.getItem("knpc-theme") || "auto";
         var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-        var theme = saved === "night" || saved === "winter" ? saved : (prefersDark ? "night" : "winter");
-        document.documentElement.setAttribute("data-theme", theme);
+        var resolved = mode === "night" || mode === "winter" ? mode : (prefersDark ? "night" : "winter");
+        document.documentElement.setAttribute("data-theme", resolved);
+        var meta = document.getElementById("meta-theme-color");
+        if (meta) meta.setAttribute("content", resolved === "night" ? "#0f172a" : "#ffffff");
       } catch (e) {}
     })();
   </script>
   <link rel="stylesheet" href="/static/css/app.css">
   <script src="/static/js/htmx.min.js" defer></script>
 </head>
-<body class="min-h-screen flex flex-col bg-base-200/70 text-base-content antialiased">
+<body class="min-h-screen flex flex-col bg-base-200/75 text-base-content antialiased"
+      data-has-cookie="{{ 'true' if has_saved_pref else 'false' }}">
+  <script>
+    (function () {
+      try {
+        if (
+          document.body.dataset.hasCookie === "false" &&
+          window.location.pathname === "/" &&
+          !window.location.search
+        ) {
+          var raw = localStorage.getItem("knpc-prefs");
+          if (raw) {
+            var p = JSON.parse(raw);
+            if (p && p.company && p.group) {
+              var qs =
+                "/?company=" + encodeURIComponent(p.company) +
+                "&group=" + encodeURIComponent(p.group) +
+                "&range=" + encodeURIComponent(p.range || "year") +
+                "&save=1";
+              window.location.replace(qs);
+            }
+          }
+        }
+      } catch (e) {}
+    })();
+  </script>
+
   <div id="htmx-loader" class="htmx-loader-bar fixed top-0 left-0 right-0 h-0.5 bg-primary z-50 pointer-events-none"></div>
 
-  <header class="sticky top-0 z-30 bg-base-100/90 backdrop-blur-md border-b border-base-300">
-    <div class="max-w-6xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2">
-      <a href="/" class="flex items-center gap-2.5 min-w-0 group">
-        <img src="/static/img/logo.png" alt="KNPC Schedule logo" width="34" height="34"
-             class="w-8 h-8 sm:w-9 sm:h-9 rounded-lg object-contain shrink-0 ring-1 ring-base-300 bg-base-100">
-        <div class="min-w-0">
-          <div class="flex items-center gap-2">
-            <span class="font-bold text-sm sm:text-base tracking-tight truncate group-hover:text-primary transition-colors">
-              KNPC Schedule
-            </span>
-            <span class="badge badge-soft badge-primary badge-xs hidden sm:inline-flex">Kuwait</span>
-          </div>
-          <p class="text-[11px] text-base-content/60 truncate hidden xs:block">
-            Shift rotations, long weekends &amp; Kuwaiti holidays
-          </p>
-        </div>
-      </a>
-
-      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0 no-print">
-        <button type="button"
-                onclick="window.knpcShare(this)"
-                class="btn btn-ghost btn-sm gap-1.5 px-2.5"
-                title="Share or copy link to this schedule">
-          {{ icons.share("w-4 h-4") }}
-          <span class="hidden sm:inline">Share</span>
-        </button>
-
-        <button type="button"
-                id="theme-toggle-btn"
-                onclick="window.knpcToggleTheme()"
-                class="btn btn-ghost btn-sm btn-square"
-                aria-label="Toggle light or dark theme"
-                title="Toggle theme">
-          <span id="theme-icon-sun" class="hidden">{{ icons.sun("w-4 h-4") }}</span>
-          <span id="theme-icon-moon" class="hidden">{{ icons.moon("w-4 h-4") }}</span>
-        </button>
+  <!-- Minimal Native-Style App Bar -->
+  <header class="sticky top-0 z-30 bg-base-100/92 backdrop-blur-md border-b border-base-300/80 pt-[env(safe-area-inset-top,0px)] no-print">
+    <div class="max-w-6xl mx-auto px-3 sm:px-5 h-12 flex items-center justify-between gap-2">
+      <div id="header-identity" class="min-w-0">
+        {% include "partials/header_identity.html" %}
       </div>
+
+      <div id="desktop-tabs" class="hidden md:flex items-center">
+        {% include "partials/desktop_tabs.html" %}
+      </div>
+
+      <button type="button"
+              onclick="window.knpcOpenSettings()"
+              class="btn btn-ghost btn-sm gap-1.5 px-2.5 shrink-0"
+              aria-label="Open settings"
+              title="Settings, exports &amp; theme">
+        {{ icons.adjustments("w-5 h-5") }}
+        <span class="hidden sm:inline text-xs font-semibold">Settings</span>
+      </button>
     </div>
   </header>
 
-  <main class="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+  <main class="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-5 pt-3 sm:pt-5 pb-24 md:pb-8">
     {% block content %}{% endblock %}
   </main>
 
-  <footer class="border-t border-base-300 bg-base-100/80 py-3 mt-auto no-print">
-    <div class="max-w-6xl mx-auto px-3 sm:px-6 flex flex-wrap items-center justify-between gap-2 text-xs text-base-content/60">
-      <span>KNPC &amp; KOC Shift Scheduler &middot; Asia/Kuwait (UTC+3)</span>
-      <span>No login &middot; Zero tracking &middot; Powered by FastAPI &amp; HTMX</span>
-    </div>
-  </footer>
+  <!-- Fixed Mobile Bottom Navigation Dock -->
+  <div id="bottom-dock" class="no-print">
+    {% include "partials/bottom_dock.html" %}
+  </div>
 
+  <!-- Slide-Over Side Settings Drawer -->
+  <dialog id="settings-drawer" closedby="any" class="bg-base-100 text-base-content shadow-2xl">
+    <div id="settings-drawer-body" class="h-full flex flex-col">
+      {% include "partials/settings_drawer.html" %}
+    </div>
+  </dialog>
+
+  <!-- Day Inspector Bottom Sheet / Modal -->
   <dialog id="day-modal" closedby="any" class="modal modal-bottom sm:modal-middle">
-    <div id="day-modal-body" class="modal-box max-w-lg p-5 sm:p-6"></div>
+    <div id="day-modal-body" class="modal-box max-w-lg p-4 sm:p-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]"></div>
     <form method="dialog" class="modal-backdrop">
       <button type="submit">close</button>
     </form>
@@ -86,26 +106,79 @@
 
   <script>
     (function () {
-      function syncThemeIcon() {
-        var current = document.documentElement.getAttribute("data-theme") || "winter";
-        var sun = document.getElementById("theme-icon-sun");
-        var moon = document.getElementById("theme-icon-moon");
-        if (!sun || !moon) return;
-        if (current === "night") {
-          sun.classList.remove("hidden");
-          moon.classList.add("hidden");
-        } else {
-          sun.classList.add("hidden");
-          moon.classList.remove("hidden");
-        }
+      var deferredInstallPrompt = null;
+
+      function resolveTheme(mode) {
+        if (mode === "winter" || mode === "night") return mode;
+        var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        return prefersDark ? "night" : "winter";
       }
 
-      window.knpcToggleTheme = function () {
-        var current = document.documentElement.getAttribute("data-theme") || "winter";
-        var next = current === "night" ? "winter" : "night";
-        document.documentElement.setAttribute("data-theme", next);
-        try { localStorage.setItem("knpc-theme", next); } catch (e) {}
-        syncThemeIcon();
+      window.knpcSetTheme = function (mode) {
+        try { localStorage.setItem("knpc-theme", mode); } catch (e) {}
+        var resolved = resolveTheme(mode);
+        document.documentElement.setAttribute("data-theme", resolved);
+        var meta = document.getElementById("meta-theme-color");
+        if (meta) meta.setAttribute("content", resolved === "night" ? "#0f172a" : "#ffffff");
+        window.knpcSyncThemeButtons();
+      };
+
+      window.knpcSyncThemeButtons = function () {
+        var mode = "auto";
+        try { mode = localStorage.getItem("knpc-theme") || "auto"; } catch (e) {}
+        document.querySelectorAll("[data-theme-opt]").forEach(function (btn) {
+          var active = btn.getAttribute("data-theme-opt") === mode;
+          btn.classList.toggle("btn-primary", active);
+          btn.classList.toggle("btn-ghost", !active);
+        });
+      };
+
+      window.knpcOpenSettings = function () {
+        var drawer = document.getElementById("settings-drawer");
+        if (drawer && !drawer.open) {
+          window.knpcSyncThemeButtons();
+          window.knpcSyncInstallUI();
+          drawer.showModal();
+        }
+      };
+
+      window.knpcCloseSettings = function () {
+        var drawer = document.getElementById("settings-drawer");
+        if (drawer && drawer.open) drawer.close();
+      };
+
+      window.knpcSyncInstallUI = function () {
+        var isStandalone =
+          (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+          window.navigator.standalone === true;
+        var installBtn = document.getElementById("pwa-install-btn");
+        var iosHint = document.getElementById("pwa-ios-hint");
+        var installedBadge = document.getElementById("pwa-installed-badge");
+        var genericHint = document.getElementById("pwa-generic-hint");
+        if (!installBtn || !iosHint || !installedBadge || !genericHint) return;
+
+        installBtn.classList.add("hidden");
+        iosHint.classList.add("hidden");
+        installedBadge.classList.add("hidden");
+        genericHint.classList.add("hidden");
+
+        if (isStandalone) {
+          installedBadge.classList.remove("hidden");
+        } else if (deferredInstallPrompt) {
+          installBtn.classList.remove("hidden");
+        } else if (/iPad|iPhone|iPod/.test(navigator.userAgent || "") && !window.MSStream) {
+          iosHint.classList.remove("hidden");
+        } else {
+          genericHint.classList.remove("hidden");
+        }
+      };
+
+      window.knpcInstallApp = async function () {
+        if (!deferredInstallPrompt) return;
+        deferredInstallPrompt.prompt();
+        try { await deferredInstallPrompt.userChoice; } catch (e) {}
+        deferredInstallPrompt = null;
+        window.knpcSyncInstallUI();
       };
 
       window.knpcShare = async function (btnEl) {
@@ -135,7 +208,7 @@
           }
           if (btnEl) {
             if (!btnEl.dataset.origHtml) btnEl.dataset.origHtml = btnEl.innerHTML;
-            btnEl.innerHTML = '<span class="text-success font-semibold">Copied!</span>';
+            btnEl.innerHTML = '<span class="text-success font-semibold">Link Copied!</span>';
             clearTimeout(btnEl._copyTimer);
             btnEl._copyTimer = setTimeout(function () {
               btnEl.innerHTML = btnEl.dataset.origHtml;
@@ -146,12 +219,55 @@
         }
       };
 
-      document.addEventListener("DOMContentLoaded", syncThemeIcon);
+      function persistSavedPrefsFromDom() {
+        var marker = document.getElementById("saved-pref-marker");
+        if (!marker) return;
+        var raw = marker.getAttribute("data-saved-pref");
+        if (!raw) return;
+        var parts = raw.split(":");
+        if (parts.length >= 2) {
+          try {
+            localStorage.setItem("knpc-prefs", JSON.stringify({
+              company: parts[0],
+              group: parts[1],
+              range: parts[2] || "year"
+            }));
+          } catch (e) {}
+        }
+      }
+
+      window.addEventListener("beforeinstallprompt", function (e) {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        window.knpcSyncInstallUI();
+      });
+
+      if (window.matchMedia) {
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+          var mode = "auto";
+          try { mode = localStorage.getItem("knpc-theme") || "auto"; } catch (e) {}
+          if (mode === "auto") window.knpcSetTheme("auto");
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        window.knpcSyncThemeButtons();
+        window.knpcSyncInstallUI();
+        persistSavedPrefsFromDom();
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker.register("/sw.js").catch(function () {});
+        }
+      });
+
       document.addEventListener("htmx:afterSwap", function (evt) {
-        if (evt.detail && evt.detail.target && evt.detail.target.id === "day-modal-body") {
+        if (!evt.detail || !evt.detail.target) return;
+        if (evt.detail.target.id === "day-modal-body") {
           var modal = document.getElementById("day-modal");
           if (modal && !modal.open) modal.showModal();
         }
+        window.knpcSyncThemeButtons();
+        window.knpcSyncInstallUI();
+        persistSavedPrefsFromDom();
       });
     })();
   </script>

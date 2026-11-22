@@ -1,81 +1,21 @@
-{% import "macros/icons.html" as icons %}
-
-{% set common_start = start_iso if range_key == 'custom' else None %}
-{% set common_end = end_iso if range_key == 'custom' else None %}
-
-{% if oob_sync %}
-<div id="form-state-sync" hx-swap-oob="true">
+{% if oob_nav and not oob_settings %}
+<div id="desktop-tabs" hx-swap-oob="innerHTML">
+  {% include "partials/desktop_tabs.html" %}
+</div>
+<div id="bottom-dock" hx-swap-oob="innerHTML">
+  {% include "partials/bottom_dock.html" %}
+</div>
+<div id="settings-form-state" hx-swap-oob="innerHTML">
   {% include "partials/form_state_inputs.html" %}
 </div>
 {% endif %}
 
-<div class="space-y-4">
-  <!-- Primary View Tabs -->
-  <div role="tablist" class="tabs tabs-box bg-base-100 border border-base-300 p-1.5 shadow-sm overflow-x-auto flex-nowrap no-print">
-    {% set cal_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='calendar', cal_mode=cal_mode, month=active_month_key if cal_mode == 'month' else None) %}
-    <a role="tab"
-       href="{{ cal_url }}"
-       hx-get="{{ cal_url }}"
-       hx-target="#view-panel"
-       hx-swap="innerHTML"
-       hx-push-url="true"
-       hx-indicator="#htmx-loader"
-       class="tab gap-1.5 whitespace-nowrap {{ 'tab-active font-semibold' if view == 'calendar' }}">
-      {{ icons.calendar("w-4 h-4") }}
-      <span>Calendar</span>
-    </a>
-
-    {% set wknd_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='weekends') %}
-    <a role="tab"
-       href="{{ wknd_url }}"
-       hx-get="{{ wknd_url }}"
-       hx-target="#view-panel"
-       hx-swap="innerHTML"
-       hx-push-url="true"
-       hx-indicator="#htmx-loader"
-       class="tab gap-1.5 whitespace-nowrap {{ 'tab-active font-semibold' if view == 'weekends' }}">
-      {{ icons.sparkles("w-4 h-4") }}
-      <span>Long Weekends</span>
-      <span class="badge badge-xs {{ 'badge-primary' if view == 'weekends' else 'badge-ghost' }}">{{ schedule.summary.long_weekend_count }}</span>
-    </a>
-
-    {% set hol_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='holidays') %}
-    <a role="tab"
-       href="{{ hol_url }}"
-       hx-get="{{ hol_url }}"
-       hx-target="#view-panel"
-       hx-swap="innerHTML"
-       hx-push-url="true"
-       hx-indicator="#htmx-loader"
-       class="tab gap-1.5 whitespace-nowrap {{ 'tab-active font-semibold' if view == 'holidays' }}">
-      {{ icons.flag("w-4 h-4") }}
-      <span>Holidays</span>
-      <span class="badge badge-xs {{ 'badge-warning' if view == 'holidays' else 'badge-ghost' }}">{{ schedule.summary.holiday_count }}</span>
-    </a>
-
-    {% set sched_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='schedule', shift_filter=shift_filter if shift_filter != 'all' else None) %}
-    <a role="tab"
-       href="{{ sched_url }}"
-       hx-get="{{ sched_url }}"
-       hx-target="#view-panel"
-       hx-swap="innerHTML"
-       hx-push-url="true"
-       hx-indicator="#htmx-loader"
-       class="tab gap-1.5 whitespace-nowrap {{ 'tab-active font-semibold' if view == 'schedule' }}">
-      {{ icons.table_cells("w-4 h-4") }}
-      <span>Full Schedule</span>
-      <span class="badge badge-xs badge-ghost">{{ schedule.summary.total_days }}</span>
-    </a>
-  </div>
-
-  <!-- Active View Content -->
-  {% if view == "weekends" %}
-    {% include "partials/weekends_view.html" %}
-  {% elif view == "holidays" %}
-    {% include "partials/holidays_view.html" %}
-  {% elif view == "schedule" %}
-    {% include "partials/schedule_view.html" %}
-  {% else %}
-    {% include "partials/calendar_view.html" %}
-  {% endif %}
-</div>
+{% if view == "weekends" %}
+  {% include "partials/weekends_view.html" %}
+{% elif view == "holidays" %}
+  {% include "partials/holidays_view.html" %}
+{% elif view == "schedule" %}
+  {% include "partials/schedule_view.html" %}
+{% else %}
+  {% include "partials/calendar_view.html" %}
+{% endif %}

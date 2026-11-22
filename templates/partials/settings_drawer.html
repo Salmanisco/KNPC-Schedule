@@ -1,0 +1,205 @@
+{% import "macros/icons.html" as icons %}
+
+{% set common_start = start_iso if range_key == 'custom' else None %}
+{% set common_end = end_iso if range_key == 'custom' else None %}
+
+<!-- Drawer Header -->
+<div class="px-4 py-3.5 border-b border-base-300 flex items-center justify-between gap-2 shrink-0 pt-[max(0.875rem,env(safe-area-inset-top))]">
+  <div class="min-w-0">
+    <div class="flex items-center gap-2">
+      <h2 class="font-bold text-base">Schedule Settings</h2>
+      {% if has_saved_pref %}
+        <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+          {{ icons.check_circle("w-3.5 h-3.5") }}
+          Saved
+        </span>
+      {% endif %}
+    </div>
+    <p class="text-xs text-base-content/60">Changes save automatically on this device.</p>
+  </div>
+  <button type="button"
+          onclick="window.knpcCloseSettings()"
+          class="btn btn-sm btn-ghost btn-circle shrink-0"
+          aria-label="Close settings">
+    {{ icons.x_mark("w-4 h-4") }}
+  </button>
+</div>
+
+<!-- Scrollable Settings Body -->
+<div class="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+  <form id="settings-form"
+        hx-get="/"
+        hx-target="#workspace"
+        hx-swap="innerHTML"
+        hx-push-url="true"
+        hx-indicator="#htmx-loader"
+        class="space-y-4">
+    <input type="hidden" name="save" value="1">
+    <div id="settings-form-state">
+      {% include "partials/form_state_inputs.html" %}
+    </div>
+
+    <!-- Company -->
+    <div>
+      <span class="block text-xs font-semibold uppercase tracking-wider text-base-content/60 mb-1.5">
+        Company
+      </span>
+      <div class="grid grid-cols-2 gap-2">
+        {% for comp in COMPANIES %}
+          <label class="btn btn-md h-11 cursor-pointer {{ 'btn-primary' if comp == company else 'btn-outline border-base-300' }}">
+            <input type="radio"
+                   name="company"
+                   value="{{ comp }}"
+                   class="sr-only"
+                   onchange="this.form.requestSubmit()"
+                   {{ 'checked' if comp == company }}>
+            {{ comp }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Shift Group -->
+    <div>
+      <span class="block text-xs font-semibold uppercase tracking-wider text-base-content/60 mb-1.5">
+        Shift Group
+      </span>
+      <div class="grid grid-cols-4 gap-2">
+        {% for grp in GROUPS %}
+          <label class="btn btn-md h-11 cursor-pointer {{ 'btn-primary' if grp == group else 'btn-outline border-base-300' }}">
+            <input type="radio"
+                   name="group"
+                   value="{{ grp }}"
+                   class="sr-only"
+                   onchange="this.form.requestSubmit()"
+                   {{ 'checked' if grp == group }}>
+            {{ grp }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Date Range -->
+    <div class="space-y-2.5">
+      <label class="block">
+        <span class="block text-xs font-semibold uppercase tracking-wider text-base-content/60 mb-1.5">
+          Date Range
+        </span>
+        <select name="range"
+                aria-label="Date range preset"
+                onchange="this.form.requestSubmit()"
+                class="select select-bordered w-full bg-base-100 font-medium h-11">
+          {% for key, pair in QUICK_RANGES.items() %}
+            <option value="{{ key }}" {{ 'selected' if key == range_key }}>{{ pair[0] }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      {% if range_key == "custom" %}
+        <div class="rounded-xl border border-base-300 bg-base-200/45 p-3 space-y-2.5">
+          <label class="block">
+            <span class="text-xs font-medium text-base-content/70 mb-1 block">From</span>
+            <input type="date"
+                   name="start"
+                   value="{{ start_iso }}"
+                   min="{{ MIN_DATE_ISO }}"
+                   max="{{ MAX_DATE_ISO }}"
+                   class="input input-sm input-bordered w-full h-10"
+                   required>
+          </label>
+          <label class="block">
+            <span class="text-xs font-medium text-base-content/70 mb-1 block">To</span>
+            <input type="date"
+                   name="end"
+                   value="{{ end_iso }}"
+                   min="{{ MIN_DATE_ISO }}"
+                   max="{{ MAX_DATE_ISO }}"
+                   class="input input-sm input-bordered w-full h-10"
+                   required>
+          </label>
+          <button type="submit"
+                  onclick="window.knpcCloseSettings()"
+                  class="btn btn-sm btn-primary w-full h-10">
+            Apply Custom Dates
+          </button>
+        </div>
+      {% endif %}
+    </div>
+  </form>
+
+  <div class="divider my-0"></div>
+
+  <!-- Appearance -->
+  <div>
+    <span class="block text-xs font-semibold uppercase tracking-wider text-base-content/60 mb-1.5">
+      Appearance
+    </span>
+    <div class="grid grid-cols-3 gap-1.5 bg-base-200/75 p-1 rounded-xl border border-base-300">
+      <button type="button" data-theme-opt="auto" onclick="window.knpcSetTheme('auto')" class="btn btn-sm">Auto</button>
+      <button type="button" data-theme-opt="winter" onclick="window.knpcSetTheme('winter')" class="btn btn-sm gap-1">
+        {{ icons.sun("w-3.5 h-3.5") }} Light
+      </button>
+      <button type="button" data-theme-opt="night" onclick="window.knpcSetTheme('night')" class="btn btn-sm gap-1">
+        {{ icons.moon("w-3.5 h-3.5") }} Dark
+      </button>
+    </div>
+  </div>
+
+  <!-- Export & Share -->
+  <div class="space-y-2">
+    <span class="block text-xs font-semibold uppercase tracking-wider text-base-content/60">
+      Export &amp; Share
+    </span>
+    <div class="grid grid-cols-2 gap-2">
+      <a href="{{ build_query_url('/export/csv', company=company, group=group, range=range_key, start=common_start, end=common_end) }}"
+         download
+         class="btn btn-sm btn-outline border-base-300 h-10 gap-1.5">
+        {{ icons.download("w-4 h-4") }}
+        <span>CSV File</span>
+      </a>
+      <a href="{{ build_query_url('/export/ics', company=company, group=group, range=range_key, start=common_start, end=common_end) }}"
+         download
+         class="btn btn-sm btn-outline border-base-300 h-10 gap-1.5">
+        {{ icons.calendar("w-4 h-4") }}
+        <span>Calendar .ICS</span>
+      </a>
+    </div>
+    <button type="button"
+            onclick="window.knpcShare(this)"
+            class="btn btn-sm btn-outline border-base-300 w-full h-10 gap-2">
+      {{ icons.share("w-4 h-4") }}
+      <span>Share {{ company }} Group {{ group }} Link</span>
+    </button>
+  </div>
+
+  <!-- Install App (PWA) -->
+  <div class="rounded-xl border border-base-300 bg-base-200/45 p-3 space-y-2">
+    <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-base-content/70">
+      {{ icons.device_phone("w-4 h-4 text-primary") }}
+      <span>Install as Phone App</span>
+    </div>
+    <button type="button"
+            id="pwa-install-btn"
+            onclick="window.knpcInstallApp()"
+            class="hidden btn btn-sm btn-primary w-full">
+      Install KNPC Shifts App
+    </button>
+    <p id="pwa-ios-hint" class="hidden text-xs text-base-content/75 leading-relaxed">
+      In Safari, tap <strong>Share</strong> then <strong>Add to Home Screen</strong> to use full-screen offline.
+    </p>
+    <p id="pwa-installed-badge" class="hidden text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+      Running as installed app &#10003;
+    </p>
+    <p id="pwa-generic-hint" class="text-xs text-base-content/70 leading-relaxed">
+      Add this site to your Home Screen from your browser menu for instant offline access.
+    </p>
+  </div>
+</div>
+
+<!-- Drawer Footer -->
+<div class="px-4 py-3 border-t border-base-300 flex items-center justify-between gap-2 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+  <span class="text-[11px] text-base-content/55">Kuwait (UTC+3) &middot; No login</span>
+  <button type="button" onclick="window.knpcCloseSettings()" class="btn btn-sm btn-primary px-5">
+    Done
+  </button>
+</div>

@@ -1,0 +1,16 @@
+{% import "macros/icons.html" as icons %}
+
+<button type="button"
+        onclick="window.knpcOpenSettings()"
+        class="inline-flex items-center gap-2 rounded-full bg-base-200/80 hover:bg-base-200 border border-base-300/80 pl-1.5 pr-3 py-1 transition cursor-pointer max-w-full"
+        title="Tap to change company, shift group, or saved preferences">
+  <img src="/static/img/favicon.png" alt="" width="24" height="24"
+       class="w-6 h-6 rounded-full object-contain bg-base-100 shrink-0 ring-1 ring-base-300">
+  <span class="font-bold text-xs sm:text-sm tracking-tight truncate">
+    {{ company }} &middot; Group {{ group }}
+  </span>
+  {% if not has_saved_pref %}
+    <span class="badge badge-primary badge-soft badge-xs shrink-0 hidden xs:inline-flex">Pick</span>
+  {% endif %}
+  {{ icons.chevron_down("w-3.5 h-3.5 text-base-content/60 shrink-0") }}
+</button>

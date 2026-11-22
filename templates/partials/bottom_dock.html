@@ -1,0 +1,61 @@
+{% import "macros/icons.html" as icons %}
+
+{% set common_start = start_iso if range_key == 'custom' else None %}
+{% set common_end = end_iso if range_key == 'custom' else None %}
+
+<nav aria-label="Bottom navigation"
+     class="dock dock-md mobile-dock md:hidden fixed bottom-0 left-0 right-0 z-30 bg-base-100/95 backdrop-blur-md border-t border-base-300 shadow-[0_-4px_20px_-6px_rgba(0,0,0,0.08)]">
+  {% set cal_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='calendar', cal_mode=cal_mode, month=active_month_key if cal_mode == 'month' else None) %}
+  <a href="{{ cal_url }}"
+     hx-get="{{ cal_url }}"
+     hx-target="#view-panel"
+     hx-swap="innerHTML"
+     hx-push-url="true"
+     hx-indicator="#htmx-loader"
+     class="{{ 'dock-active text-primary' if view == 'calendar' else 'text-base-content/70' }}">
+    {{ icons.calendar("w-5 h-5") }}
+    <span class="dock-label">Calendar</span>
+  </a>
+
+  {% set wknd_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='weekends') %}
+  <a href="{{ wknd_url }}"
+     hx-get="{{ wknd_url }}"
+     hx-target="#view-panel"
+     hx-swap="innerHTML"
+     hx-push-url="true"
+     hx-indicator="#htmx-loader"
+     class="relative {{ 'dock-active text-primary' if view == 'weekends' else 'text-base-content/70' }}">
+    {{ icons.sparkles("w-5 h-5") }}
+    <span class="dock-label">Weekends</span>
+    {% if schedule.summary.long_weekend_count %}
+      <span class="absolute top-1.5 right-[22%] badge badge-xs badge-primary px-1 text-[9px] leading-none">{{ schedule.summary.long_weekend_count }}</span>
+    {% endif %}
+  </a>
+
+  {% set hol_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='holidays') %}
+  <a href="{{ hol_url }}"
+     hx-get="{{ hol_url }}"
+     hx-target="#view-panel"
+     hx-swap="innerHTML"
+     hx-push-url="true"
+     hx-indicator="#htmx-loader"
+     class="relative {{ 'dock-active text-primary' if view == 'holidays' else 'text-base-content/70' }}">
+    {{ icons.flag("w-5 h-5") }}
+    <span class="dock-label">Holidays</span>
+    {% if schedule.summary.holiday_count %}
+      <span class="absolute top-1.5 right-[22%] badge badge-xs badge-warning px-1 text-[9px] leading-none">{{ schedule.summary.holiday_count }}</span>
+    {% endif %}
+  </a>
+
+  {% set sched_url = build_query_url('/', company=company, group=group, range=range_key, start=common_start, end=common_end, view='schedule', shift_filter=shift_filter if shift_filter != 'all' else None) %}
+  <a href="{{ sched_url }}"
+     hx-get="{{ sched_url }}"
+     hx-target="#view-panel"
+     hx-swap="innerHTML"
+     hx-push-url="true"
+     hx-indicator="#htmx-loader"
+     class="{{ 'dock-active text-primary' if view == 'schedule' else 'text-base-content/70' }}">
+    {{ icons.table_cells("w-5 h-5") }}
+    <span class="dock-label">Schedule</span>
+  </a>
+</nav>

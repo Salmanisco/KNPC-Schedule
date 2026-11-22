@@ -6,7 +6,7 @@
     <div>
       <h2 class="text-base sm:text-lg font-bold">Kuwait Official Holidays</h2>
       <p class="text-xs text-base-content/65">
-        Public holidays in Kuwait alongside {{ company }} Group {{ group }}'s assigned shift.
+        Public holidays with {{ company }} Group {{ group }}'s assigned shift.
       </p>
     </div>
     <span class="badge badge-warning badge-soft font-semibold">
@@ -15,7 +15,31 @@
   </div>
 
   {% if schedule.holidays_list %}
-    <div class="card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
+    <!-- Mobile Stacked Holiday Cards (< sm) -->
+    <div class="space-y-2 sm:hidden">
+      {% for e in schedule.holidays_list %}
+        <button type="button"
+                hx-get="/day/{{ e.iso }}?company={{ company }}&group={{ group }}"
+                hx-target="#day-modal-body"
+                hx-swap="innerHTML"
+                class="w-full card bg-base-100 border border-base-300 shadow-xs text-left shift-row-holiday active:scale-[0.99] transition cursor-pointer">
+          <div class="card-body p-3.5 flex-row items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="font-bold text-sm leading-snug">{{ e.holiday }}</div>
+              <div class="text-xs text-base-content/70 mt-0.5">
+                {{ e.day_name }} &middot; {{ e.formatted_date }}
+              </div>
+            </div>
+            <div class="shrink-0">
+              {{ ui.shift_badge(e.shift) }}
+            </div>
+          </div>
+        </button>
+      {% endfor %}
+    </div>
+
+    <!-- Desktop / Tablet Holiday Table (sm+) -->
+    <div class="hidden sm:block card bg-base-100 border border-base-300 shadow-sm overflow-hidden">
       <div class="overflow-x-auto">
         <table class="table table-sm sm:table-md">
           <thead>
@@ -48,7 +72,7 @@
         {{ icons.flag("w-8 h-8 text-base-content/35") }}
         <h3 class="font-semibold text-base">No Kuwaiti holidays in this date range</h3>
         <p class="text-xs text-base-content/60 max-w-sm">
-          Expand your date range to view upcoming official Kuwaiti holidays.
+          Open Settings to expand your date range to view upcoming official Kuwaiti holidays.
         </p>
       </div>
     </div>

@@ -45,31 +45,39 @@ QUICK_RANGES: dict[str, tuple[str, int | None]] = {
 SHIFT_META: dict[str, dict[str, str]] = {
     "Morning": {
         "short": "M",
+        "form_short": "M",
         "cell_class": "shift-morning",
         "badge_class": "shift-badge-morning",
         "row_class": "shift-row-morning",
         "dot_class": "shift-dot-morning",
+        "form_class": "shift-form-morning",
     },
     "Afternoon": {
         "short": "A",
+        "form_short": "A",
         "cell_class": "shift-afternoon",
         "badge_class": "shift-badge-afternoon",
         "row_class": "shift-row-afternoon",
         "dot_class": "shift-dot-afternoon",
+        "form_class": "shift-form-afternoon",
     },
     "Night": {
         "short": "N",
+        "form_short": "N",
         "cell_class": "shift-night",
         "badge_class": "shift-badge-night",
         "row_class": "shift-row-night",
         "dot_class": "shift-dot-night",
+        "form_class": "shift-form-night",
     },
     "Off": {
         "short": "OFF",
+        "form_short": "OFF",
         "cell_class": "shift-off",
         "badge_class": "shift-badge-off",
         "row_class": "shift-row-off",
         "dot_class": "shift-dot-off",
+        "form_class": "shift-form-off",
     },
 }
 
@@ -153,6 +161,7 @@ class ScheduleResult:
     summary: ScheduleSummary
     today_entry: DayEntry
     tomorrow_entry: DayEntry
+    next_8_days: tuple[DayEntry, ...]
     next_off_date: date | None
     days_until_off: int | None
     next_long_weekend: LongWeekend | None
@@ -542,13 +551,12 @@ def build_schedule(
         long_weekend_count=len(long_weekends),
     )
 
-    today_entry = entries_by_date.get(ref_today) or _make_day_entry(
-        ref_today, norm_company, norm_group, ref_today
+    next_8_days = tuple(
+        _make_day_entry(ref_today + timedelta(days=offset), norm_company, norm_group, ref_today)
+        for offset in range(8)
     )
-    tomorrow_date = ref_today + timedelta(days=1)
-    tomorrow_entry = entries_by_date.get(tomorrow_date) or _make_day_entry(
-        tomorrow_date, norm_company, norm_group, ref_today
-    )
+    today_entry = next_8_days[0]
+    tomorrow_entry = next_8_days[1]
     next_off_date, days_until_off = _find_next_off(norm_company, norm_group, ref_today)
     next_lw = _find_next_long_weekend(norm_company, norm_group, ref_today)
 
@@ -565,6 +573,7 @@ def build_schedule(
         summary=summary,
         today_entry=today_entry,
         tomorrow_entry=tomorrow_entry,
+        next_8_days=next_8_days,
         next_off_date=next_off_date,
         days_until_off=days_until_off,
         next_long_weekend=next_lw,

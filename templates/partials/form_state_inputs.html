@@ -6,3 +6,7 @@
 {% if shift_filter != "all" %}
 <input type="hidden" name="shift_filter" value="{{ shift_filter }}">
 {% endif %}
+{% if range_key == "custom" %}
+<input type="hidden" name="start" value="{{ start_iso }}">
+<input type="hidden" name="end" value="{{ end_iso }}">
+{% endif %}
